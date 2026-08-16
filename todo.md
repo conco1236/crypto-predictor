@@ -373,3 +373,12 @@
 - [x] Kiểm thử quyền Read/Trade giả lập và khẳng định Withdraw luôn bị từ chối
 - [x] Chạy dry-run validation và guarded live preflight chỉ trên mock API, không phát sinh lệnh thật
 - [x] Hoàn thiện dashboard Heartbeat/P&L history, tests và checkpoint cho mock scope
+
+## User request: dry-run scenario editor, P&L chart, filters and CSV export
+
+- [x] Thêm giao diện chỉnh sửa kịch bản dry-run cho khối lượng, giá Entry/TP/SL và risk limit
+- [x] Kết nối scenario editor với mock validation, hiển thị kết quả preflight rõ ràng
+- [x] Thêm biểu đồ timeline P&L/equity theo dữ liệu sandbox đã đóng
+- [x] Thêm bộ lọc lịch sử P&L theo ngày bắt đầu/kết thúc và BTC/ETH
+- [x] Thêm export CSV cho dữ liệu P&L đã lọc, escape dữ liệu an toàn
+- [x] Viết tests data transformation/export, kiểm thử responsive và tạo checkpoint
