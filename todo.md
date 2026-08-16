@@ -298,3 +298,12 @@
 - [x] Thêm bảng lịch sử thay đổi offline mode và risk limit trên Trading Bot
 - [x] Validate địa chỉ ví EVM/BSC theo thời gian thực và cảnh báo trực quan
 - [x] Viết/cập nhật tests, kiểm tra responsive/runtime và tạo checkpoint
+
+## User request: paper bot automation, Telegram controls and database sync
+
+- [x] Tạo schema/database cho paper trades, trạng thái TP/SL, P&L và audit history
+- [x] Tự động cập nhật giá thị trường và đóng paper trade khi chạm TP hoặc SL
+- [x] Thêm equity curve và thống kê P&L trực quan từ dữ liệu database thật
+- [x] Thêm nút điều khiển paper bot qua Telegram, không đặt lệnh thật
+- [x] Đồng bộ dashboard nhiều thiết bị qua API database
+- [x] Viết/cập nhật migration, tests, heartbeat, Telegram và responsive QA

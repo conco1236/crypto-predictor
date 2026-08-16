@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/mysql2";
 import { and, desc, eq, gt, like } from "drizzle-orm";
-import { aiAnalyses, aiReanalysisRequests, heartbeatRuns, InsertUser, newsAiSettings, newsItems, signalOutcomes, signalProcessingState, signalSnapshots, telegramAlertRules, telegramDeliveryLogs, telegramSettings, users } from "../drizzle/schema";
+import { aiAnalyses, aiReanalysisRequests, heartbeatRuns, InsertUser, newsAiSettings, newsItems, paperBotAuditLogs, paperTrades, signalOutcomes, signalProcessingState, signalSnapshots, telegramAlertRules, telegramDeliveryLogs, telegramSettings, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -149,6 +149,38 @@ export async function upsertSignalOutcome(input: { userId: number; snapshotId: n
   const db = await getDb();
   if (!db) throw new Error("Database chưa sẵn sàng");
   await db.insert(signalOutcomes).values({ ...input, exitCandleOpenTime: input.exitCandleOpenTime ?? null, exitPrice: input.exitPrice ?? null }).onDuplicateKeyUpdate({ set: { outcome: input.outcome, exitCandleOpenTime: input.exitCandleOpenTime ?? null, exitPrice: input.exitPrice ?? null, returnPercent: input.returnPercent, candlesObserved: input.candlesObserved, reason: input.reason, evaluatedAt: new Date() } });
+}
+
+export async function createPaperTrade(input: { userId: number; exchange: string; symbol: string; interval: string; direction: "Long" | "Short"; entry: number; takeProfit: number; stopLoss: number; currentPrice: number; openedAt: number; sourceSignalKey: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database chưa sẵn sàng");
+  await db.insert(paperTrades).values(input);
+  const rows = await db.select().from(paperTrades).where(and(eq(paperTrades.userId, input.userId), eq(paperTrades.sourceSignalKey, input.sourceSignalKey))).orderBy(desc(paperTrades.createdAt)).limit(1);
+  return rows[0];
+}
+
+export async function getPaperTrades(userId: number, limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(paperTrades).where(eq(paperTrades.userId, userId)).orderBy(desc(paperTrades.createdAt)).limit(clampHistoryLimit(limit, 100, 500));
+}
+
+export async function updatePaperTrade(id: number, userId: number, data: { currentPrice: number; status?: "open" | "take_profit" | "stop_loss" | "cancelled"; closedAt?: number | null; exitPrice?: number | null; pnlPercent?: number }) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(paperTrades).set(data).where(and(eq(paperTrades.id, id), eq(paperTrades.userId, userId)));
+}
+
+export async function createPaperBotAudit(userId: number, action: string, detail: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(paperBotAuditLogs).values({ userId, action, detail });
+}
+
+export async function getPaperBotAudit(userId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(paperBotAuditLogs).where(eq(paperBotAuditLogs.userId, userId)).orderBy(desc(paperBotAuditLogs.createdAt)).limit(clampHistoryLimit(limit, 50, 200));
 }
 
 export async function getSignalOutcomes(userId: number, limit = 100) {

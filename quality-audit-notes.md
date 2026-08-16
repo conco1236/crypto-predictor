@@ -146,3 +146,9 @@ Verification: dev server restarted cleanly, full-page mobile preview rendered wi
 Trading Bot now reads the existing `market.all` signal stream and presents real BTC/ETH analyses with the captured Entry, TP1 and SL levels. Users can open paper trades, review Long/Short direction, and re-evaluate whether the current signal price has reached TP or SL. Paper trades are stored locally for the test workspace and never call exchange APIs or submit orders.
 
 The interface records offline-mode changes, live switch changes, confirmation preference, risk-limit changes and paper-trading checks in a bounded local audit history. EVM/BSC wallet input validates `0x` plus 40 hexadecimal characters in real time, with accessible invalid/valid border and message states. Verification: TypeScript clean, 4 test files / 13 tests passed, server restart clean and mobile full-page preview rendered without visible overflow.
+
+## Database-backed paper bot automation — 2026-08-16
+
+Migration 0010 created `paper_trades` and `paper_bot_audit_logs` without destructive changes. Protected tRPC procedures now create/list/refresh paper trades and read/write audit events per user. Refresh uses the current public market analysis stream and closes open paper trades at TP or SL, calculating directional P&L; the Trading Bot refreshes automatically every 30 seconds while offline mode is enabled.
+
+Telegram signal keyboards now include safe URLs to open the Paper Bot and P&L views. These buttons do not execute exchange or DEX orders. The Trading Bot displays database-backed paper history, TP/SL counts, total P&L and an equity curve. Verification: migration applied successfully, TypeScript clean, and 4 test files / 13 tests passed.

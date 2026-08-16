@@ -10,7 +10,9 @@ export function buildSignalInlineKeyboard(analysis: MarketAnalysis): TelegramInl
   const chartUrl = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(chartSymbol)}`;
   const appUrl = process.env.PUBLIC_APP_URL ?? "https://cryptosig-2awoct8z.manus.space";
   const liquidityUrl = `${appUrl}/?focus=liquidity&exchange=${encodeURIComponent(analysis.exchange)}&symbol=${encodeURIComponent(analysis.symbol)}&interval=${encodeURIComponent(analysis.interval)}`;
-  return { inline_keyboard: [[{ text: "Xem biểu đồ", url: chartUrl }, { text: "Kiểm tra thanh khoản", url: liquidityUrl }]] };
+  const paperUrl = `${appUrl}/?page=trading-bot&focus=paper`;
+  const pnlUrl = `${appUrl}/?page=trading-bot&focus=pnl`;
+  return { inline_keyboard: [[{ text: "Xem biểu đồ", url: chartUrl }, { text: "Kiểm tra thanh khoản", url: liquidityUrl }], [{ text: "Mở Paper Bot", url: paperUrl }, { text: "Xem P&L", url: pnlUrl }]] };
 }
 
 export async function sendTelegramMessage(botToken: string, chatId: string, text: string, replyMarkup?: TelegramInlineKeyboard): Promise<TelegramSendResult> {

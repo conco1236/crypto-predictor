@@ -129,6 +129,35 @@ export const aiReanalysisRequests = mysqlTable("ai_reanalysis_requests", {
   error: text("error"),
 }, table => ({ reanalysisLookup: index("ai_reanalysis_lookup_idx").on(table.userId, table.snapshotId, table.requestedAt) }));
 
+export const paperTrades = mysqlTable("paper_trades", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  exchange: varchar("exchange", { length: 20 }).notNull(),
+  symbol: varchar("symbol", { length: 20 }).notNull(),
+  interval: varchar("interval", { length: 10 }).notNull(),
+  direction: mysqlEnum("direction", ["Long", "Short"]).notNull(),
+  entry: double("entry").notNull(),
+  takeProfit: double("takeProfit").notNull(),
+  stopLoss: double("stopLoss").notNull(),
+  currentPrice: double("currentPrice").notNull(),
+  status: mysqlEnum("status", ["open", "take_profit", "stop_loss", "cancelled"]).default("open").notNull(),
+  openedAt: double("openedAt").notNull(),
+  closedAt: double("closedAt"),
+  exitPrice: double("exitPrice"),
+  pnlPercent: double("pnlPercent").default(0).notNull(),
+  sourceSignalKey: varchar("sourceSignalKey", { length: 120 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({ paperTradeLookup: index("paper_trades_lookup_idx").on(table.userId, table.status, table.createdAt) }));
+
+export const paperBotAuditLogs = mysqlTable("paper_bot_audit_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  action: varchar("action", { length: 60 }).notNull(),
+  detail: text("detail").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({ auditLookup: index("paper_bot_audit_lookup_idx").on(table.userId, table.createdAt) }));
+
 export const heartbeatRuns = mysqlTable("heartbeat_runs", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -168,6 +197,8 @@ export type TelegramAlertRule = typeof telegramAlertRules.$inferSelect;
 export type SignalSnapshot = typeof signalSnapshots.$inferSelect;
 export type TelegramDeliveryLog = typeof telegramDeliveryLogs.$inferSelect;
 export type HeartbeatRun = typeof heartbeatRuns.$inferSelect;
+export type PaperTrade = typeof paperTrades.$inferSelect;
+export type PaperBotAuditLog = typeof paperBotAuditLogs.$inferSelect;
 export type SignalOutcome = typeof signalOutcomes.$inferSelect;
 export type NewsAiSetting = typeof newsAiSettings.$inferSelect;
 export type NewsItem = typeof newsItems.$inferSelect;

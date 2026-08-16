@@ -71,6 +71,13 @@
       "when": 1786884131160,
       "tag": "0009_busy_sugar_man",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1786891584589,
+      "tag": "0010_violet_hellcat",
+      "breakpoints": true
     }
   ]
 }
