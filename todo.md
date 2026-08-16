@@ -346,12 +346,12 @@
 
 ## User request: daily sandbox P&L report and guarded live switch
 
-- [ ] Tạo báo cáo P&L sandbox theo ngày và nhóm BTC/ETH
-- [ ] Gửi báo cáo định kỳ qua Telegram bằng Heartbeat `/api/scheduled/*`
-- [ ] Thêm cấu hình bật/tắt báo cáo và idempotency cho lịch gửi
-- [ ] Thêm nút Sandbox → Live với validation credentials/quyền/risk và xác nhận hai bước
-- [ ] Giữ live execution bị khóa khi chưa đủ điều kiện và không gửi lệnh ngoài xác nhận
-- [ ] Viết/cập nhật tests, audit, responsive/runtime và checkpoint
+- [x] Tạo báo cáo P&L sandbox theo ngày và nhóm BTC/ETH
+- [x] Gửi báo cáo định kỳ qua Telegram bằng Heartbeat `/api/scheduled/*`
+- [x] Thêm cấu hình bật/tắt báo cáo và idempotency cho lịch gửi
+- [x] Thêm nút Sandbox → Live với validation credentials/quyền/risk và xác nhận hai bước
+- [x] Giữ live execution bị khóa khi chưa đủ điều kiện và không gửi lệnh ngoài xác nhận
+- [x] Viết/cập nhật tests, audit, responsive/runtime và checkpoint
 
 - [x] Daily sandbox P&L report: DB aggregation, Telegram formatter, idempotent Heartbeat callback và route `/api/scheduled/paper-pnl-report`
 - [x] UI toggle daily P&L report và guarded Sandbox → Live gate với offline/risk/wallet/connector checks
