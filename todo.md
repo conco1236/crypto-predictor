@@ -87,3 +87,11 @@
 - [x] Thêm test UI/component thực sự cho RiskScoreTooltip: render, aria-label, focus/trigger và nội dung tooltip
 - [x] Bổ sung setup test React component nếu cần và chạy lại toàn bộ suite
 - [x] Tạo checkpoint mới sau khi hoàn tất xác minh component tooltip và có version_id mới
+- [x] Tạo API lấy lịch sử risk score theo exchange/symbol/interval từ snapshot thực tế
+- [x] Chuẩn hóa candleClosedAt/candleOpenTime và giới hạn số điểm lịch sử cho sparkline
+- [x] Hiển thị sparkline risk score trên từng SignalCard với trạng thái thiếu dữ liệu rõ ràng
+- [x] Bổ sung test truy vấn lịch sử, mapping dữ liệu và không trộn sàn/timeframe
+- [x] Kiểm thử responsive chart, build và tạo checkpoint mới
+- [x] Thêm test group risk history theo exchange:symbol:interval để xác minh không trộn dữ liệu
+- [x] Thêm test contract cho procedure market.riskHistories
+- [ ] Tạo checkpoint mới cho sparkline risk history và xác nhận version_id

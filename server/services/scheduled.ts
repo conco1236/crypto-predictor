@@ -20,7 +20,7 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
       if (!newClosedCandle) continue;
       const previous = await getLastSignal(settings.userId, a.exchange, a.symbol, a.interval);
       const shouldAlert = Boolean(settings.enabled && Math.abs(a.indicators.score) >= settings.alertThreshold && (!previous || previous.label !== a.indicators.label));
-      await saveSignalSnapshot({ userId: settings.userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, label: a.indicators.label, score: a.indicators.score, price: a.price, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
+      await saveSignalSnapshot({ userId: settings.userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, label: a.indicators.label, score: a.indicators.score, price: a.price, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, risk: a.risk, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
       await markProcessedCandle({ userId: settings.userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
       saved++;
       if (shouldAlert) { await sendTelegramMessage(settings.botToken, settings.chatId, formatSignalAlert(a)); alerts++; }

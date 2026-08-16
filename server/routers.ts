@@ -7,7 +7,7 @@ import { z } from "zod";
 import { parse as parseCookie } from "cookie";
 import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { analyzeAllMarkets } from "./market/binance";
-import { getLastSignal, getProcessedCandle, getSignalHistory, getTelegramSettings, markProcessedCandle, saveSignalSnapshot, saveTelegramSettings } from "./db";
+import { getLastSignal, getProcessedCandle, getRiskHistories, getRiskHistory, getSignalHistory, getTelegramSettings, markProcessedCandle, saveSignalSnapshot, saveTelegramSettings } from "./db";
 import { formatSignalAlert, sendTelegramMessage } from "./services/telegram";
 
 function responseText(response: Awaited<ReturnType<typeof invokeLLM>>) {
@@ -51,7 +51,7 @@ export const appRouter = router({
         const previous = await getLastSignal(ctx.user.id, a.exchange, a.symbol, a.interval);
         const settings = await getTelegramSettings(ctx.user.id);
         const changed = !previous || previous.label !== a.indicators.label;
-        await saveSignalSnapshot({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, price: a.price, label: a.indicators.label, score: a.indicators.score, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
+        await saveSignalSnapshot({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, price: a.price, label: a.indicators.label, score: a.indicators.score, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, risk: a.risk, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
         await markProcessedCandle({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
         if (settings?.enabled && Math.abs(a.indicators.score) >= settings.alertThreshold && changed && settings.botToken && settings.chatId) {
           await sendTelegramMessage(settings.botToken, settings.chatId, formatSignalAlert(a));
@@ -60,6 +60,8 @@ export const appRouter = router({
       return { saved: analyses.length, updatedAt: Date.now() };
     }),
     history: protectedProcedure.input(z.object({ limit: z.number().min(1).max(100).default(40) })).query(({ ctx, input }) => getSignalHistory(ctx.user.id, input.limit)),
+    riskHistory: protectedProcedure.input(z.object({ exchange: z.string().min(1), symbol: z.string().min(1), interval: z.string().min(1), limit: z.number().min(2).max(60).default(24) })).query(({ ctx, input }) => getRiskHistory(ctx.user.id, input.exchange, input.symbol, input.interval, input.limit)),
+    riskHistories: protectedProcedure.input(z.object({ limitPerKey: z.number().min(2).max(60).default(24) }).optional()).query(({ ctx, input }) => getRiskHistories(ctx.user.id, input?.limitPerKey ?? 24)),
   }),
   telegram: router({
     get: protectedProcedure.query(async ({ ctx }) => {

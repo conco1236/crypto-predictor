@@ -1,5 +1,5 @@
-import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { and, desc, eq } from "drizzle-orm";
 import { InsertUser, signalProcessingState, signalSnapshots, telegramSettings, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -89,4 +89,48 @@ export async function getLastSignal(userId: number, exchange: string, symbol: st
   if (!db) return undefined;
   const result = await db.select().from(signalSnapshots).where(and(eq(signalSnapshots.userId, userId), eq(signalSnapshots.exchange, exchange), eq(signalSnapshots.symbol, symbol), eq(signalSnapshots.interval, interval))).orderBy(desc(signalSnapshots.createdAt)).limit(1);
   return result[0];
+}
+
+export function parseRiskSnapshot(row: { indicators: string; createdAt: Date }) {
+  try {
+    const payload = JSON.parse(row.indicators) as { risk?: { score?: number }; candleOpenTime?: number; candleClosedAt?: number };
+    const score = payload.risk?.score;
+    if (typeof score !== "number" || !Number.isFinite(score)) return null;
+    return { candleOpenTime: payload.candleOpenTime ?? row.createdAt.getTime(), candleClosedAt: payload.candleClosedAt ?? row.createdAt.getTime(), score: Math.max(0, Math.min(100, score)) };
+  } catch {
+    return null;
+  }
+}
+
+export function groupRiskSnapshots(rows: Array<{ exchange: string; symbol: string; interval: string; indicators: string; createdAt: Date }>, limitPerKey = 24) {
+  const grouped: Record<string, Array<{ candleOpenTime: number; candleClosedAt: number; score: number }>> = {};
+  for (const row of rows) {
+    const point = parseRiskSnapshot(row);
+    if (!point) continue;
+    const key = `${row.exchange}:${row.symbol}:${row.interval}`;
+    const values = grouped[key] ?? (grouped[key] = []);
+    if (values.length >= Math.min(Math.max(limitPerKey, 2), 60)) continue;
+    values.push(point);
+  }
+  for (const key of Object.keys(grouped)) grouped[key].reverse();
+  return grouped;
+}
+
+export async function getRiskHistories(userId: number, limitPerKey = 24) {
+  const db = await getDb();
+  if (!db) return {};
+  const rows = await db.select().from(signalSnapshots).where(eq(signalSnapshots.userId, userId)).orderBy(desc(signalSnapshots.createdAt)).limit(500);
+  return groupRiskSnapshots(rows, limitPerKey);
+}
+
+export async function getRiskHistory(userId: number, exchange: string, symbol: string, interval: string, limit = 24) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select().from(signalSnapshots)
+    .where(and(eq(signalSnapshots.userId, userId), eq(signalSnapshots.exchange, exchange), eq(signalSnapshots.symbol, symbol), eq(signalSnapshots.interval, interval)))
+    .orderBy(desc(signalSnapshots.createdAt)).limit(Math.min(Math.max(limit, 1), 60));
+  return rows.map(row => {
+    const point = parseRiskSnapshot(row);
+    return point ? { ...point, createdAt: row.createdAt } : null;
+  }).filter((item): item is { candleOpenTime: number; candleClosedAt: number; score: number; createdAt: Date } => Boolean(item)).reverse();
 }
