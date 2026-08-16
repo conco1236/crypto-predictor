@@ -140,3 +140,9 @@ The current form performs local validation messaging only and does not place ord
 The Trading Bot page now defaults to offline test mode. Binance and OKX API input is skipped and the UI explicitly states that no credentials are read, no exchange connection is tested and no real order is submitted. The Passphrase field was moved from the OKX section into the EVM/BSC DEX wallet section, alongside the public wallet address; private keys remain explicitly disallowed. The live bot switch remains off by default and per-order confirmation remains enabled.
 
 Verification: dev server restarted cleanly, full-page mobile preview rendered without visible overflow, TypeScript clean, and 4 test files / 13 tests passed.
+
+## Paper trading, settings audit and DEX wallet validation — 2026-08-16
+
+Trading Bot now reads the existing `market.all` signal stream and presents real BTC/ETH analyses with the captured Entry, TP1 and SL levels. Users can open paper trades, review Long/Short direction, and re-evaluate whether the current signal price has reached TP or SL. Paper trades are stored locally for the test workspace and never call exchange APIs or submit orders.
+
+The interface records offline-mode changes, live switch changes, confirmation preference, risk-limit changes and paper-trading checks in a bounded local audit history. EVM/BSC wallet input validates `0x` plus 40 hexadecimal characters in real time, with accessible invalid/valid border and message states. Verification: TypeScript clean, 4 test files / 13 tests passed, server restart clean and mobile full-page preview rendered without visible overflow.

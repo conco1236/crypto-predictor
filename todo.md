@@ -290,3 +290,11 @@
 - [x] Hiển thị rõ offline/paper mode và không gửi lệnh thật
 - [x] Kiểm thử route Trading Bot, responsive, TypeScript và runtime
 - [x] Cập nhật audit và tạo checkpoint
+
+## User request: paper trading, settings audit and DEX wallet validation
+
+- [x] Thêm paper trading từ tín hiệu thật với Entry/TP/SL và trạng thái lệnh rõ ràng
+- [x] Không gửi lệnh thật hoặc gọi API sàn trong paper trading
+- [x] Thêm bảng lịch sử thay đổi offline mode và risk limit trên Trading Bot
+- [x] Validate địa chỉ ví EVM/BSC theo thời gian thực và cảnh báo trực quan
+- [x] Viết/cập nhật tests, kiểm tra responsive/runtime và tạo checkpoint
