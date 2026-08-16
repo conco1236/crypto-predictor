@@ -234,3 +234,10 @@
 - [x] Chuẩn hóa chữ Light mode sang màu đậm, dễ đọc và đủ tương phản
 - [x] Thêm tooltip giải thích RSI, ADX, ATR, Volume, EMA/MACD và cách diễn giải
 - [x] Viết/cập nhật tests, kiểm tra responsive/accessibility/runtime và tạo checkpoint
+
+## User request: glossary and backtest visualization
+
+- [x] Tạo route/trang Glossary tổng hợp và giải thích các thuật ngữ kỹ thuật
+- [x] Mở rộng tooltip cho EMA, MACD, Entry, Take Profit và Stop Loss
+- [x] Bổ sung biểu đồ hiệu suất Backtest trực quan từ dữ liệu backend thật
+- [x] Viết/cập nhật tests, kiểm tra route/responsive/runtime và tạo checkpoint

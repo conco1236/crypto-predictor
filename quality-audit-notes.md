@@ -108,3 +108,11 @@ Verification: TypeScript passed; 4 targeted test files / 16 tests passed. The pr
 Light-mode signal cards no longer use pastel pink/green/amber fills as their base background; they use the semantic card surface with only a colored border, while dark mode retains its colored translucent treatment. Risk score and risk explanation panels now use semantic border/background/foreground tokens instead of dark-only hardcoded colors.
 
 A reusable indicator tooltip was added to the SignalCard metrics. RSI explains momentum and 30/70 interpretation; ADX explains trend strength versus direction; ATR explains volatility and stop-distance context; Volume explains the current-to-average volume ratio. Tooltips are keyboard-focusable, use a constrained mobile width and semantic Light/Dark colors. Verification: TypeScript clean, 4 test files / 11 tests passed, and mobile preview rendered without layout overflow.
+
+## Glossary and performance charts — 2026-08-16
+
+A new protected-by-app route `?page=glossary` provides a searchable, category-filtered reference library covering EMA, MACD, RSI, ADX, ATR, volume ratio, trend/risk/confidence, multi-timeframe confirmation, Entry, TP1/TP2, SL, No Trade and Backtest metrics including hit rate, expectancy, maximum drawdown and horizon P&L. Each entry separates meaning, interpretation and caution.
+
+Signal cards now display EMA 9/21/50 and MACD values alongside RSI, ADX, ATR and volume, with keyboard-focusable tooltips for each. Entry, TP1 and SL also have detailed tooltips explaining their role and limitations. Backtest now includes a second responsive line chart comparing horizon P&L, expectancy and maximum drawdown by group, while keeping the original bar chart and real backend metrics.
+
+Verification: TypeScript clean, 4 test files / 16 tests passed, and mobile screenshots for Glossary and Backtest rendered without visible overflow. The preview continues to show the expected unauthenticated loading state for protected Backtest data.
