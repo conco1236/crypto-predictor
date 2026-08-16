@@ -49,3 +49,19 @@
 - [x] Cập nhật mutation Telegram save để đồng bộ cron hiện có bằng updateHeartbeatJob
 - [x] Thêm test lưu cấu hình khi taskUid đã tồn tại phải cập nhật cron hiện tại
 - [ ] Xác minh production job được webapp tự đồng bộ và chạy HTTP 200
+- [x] Tính risk score và risk level từ ADX, ATR/giá, volume, độ mạnh điểm và khoảng cách Entry–SL
+- [x] Thêm nhãn rủi ro Thấp/Vừa/Cao vào dữ liệu SignalCard
+- [x] Thêm bộ lọc risk level trên dashboard và giữ tương thích với lọc sàn/timeframe
+- [x] Hiển thị lý do rủi ro để người dùng hiểu vì sao tín hiệu bị xếp loại
+- [x] Bổ sung unit tests cho risk score và kiểm thử responsive UI
+- [ ] Tạo checkpoint mới sau khi hoàn tất bộ lọc rủi ro
+- [x] Kiểm thử responsive mobile/tablet cho bộ lọc risk level mới và xác nhận không vỡ layout
+- [x] Xác minh tương tác bộ lọc rủi ro trên UI desktop/mobile sau refetch cùng lọc sàn/timeframe
+- [x] Bỏ qua đăng nhập browser production theo yêu cầu; kiểm tra tương đương bằng unit test/build/preview
+- [x] Kiểm chứng phối hợp risk level, sàn/timeframe và dữ liệu refetch bằng hàm lọc thuần cùng unit test
+- [x] Chốt kiểm thử bộ lọc rủi ro bằng unit test/build/preview thay cho browser production theo yêu cầu người dùng
+- [x] Tách hàm lọc risk/sàn/timeframe thành module thuần để kiểm thử không phụ thuộc đăng nhập
+- [x] Thêm test phối hợp các bộ lọc và refetch giữ nguyên risk classification
+- [x] Cập nhật Home dùng chung hàm lọc và tạo checkpoint sau khi xác minh tương đương
+- [ ] Tạo checkpoint mới sau khi hoàn tất bộ lọc rủi ro và xác minh tương đương bằng test/build hiện tại
+- [ ] Sau khi tạo checkpoint, đọc lại todo.md và đánh dấu hoàn tất hạng mục checkpoint

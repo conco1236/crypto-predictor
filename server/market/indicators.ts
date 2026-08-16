@@ -8,6 +8,13 @@ export type Candle = {
 };
 
 export type TrendLabel = "Bullish" | "Bearish" | "Neutral";
+export type RiskLevel = "low" | "medium" | "high";
+
+export type RiskAssessment = {
+  score: number;
+  level: RiskLevel;
+  reasons: string[];
+};
 
 export type IndicatorSnapshot = {
   ema9: number;
@@ -143,6 +150,29 @@ export function analyzeCandles(candles: Candle[]): IndicatorSnapshot {
   score = clamp(Math.round(score), -100, 100);
   const label: TrendLabel = score >= 25 ? "Bullish" : score <= -25 ? "Bearish" : "Neutral";
   return { ema9: e9, ema21: e21, ema50: e50, rsi: r, macd: m.line, macdSignal: m.signal, macdHistogram: m.histogram, bollingerUpper: b.upper, bollingerMiddle: b.middle, bollingerLower: b.lower, adx: adxValue, atr: a, volumeRatio, support, resistance, score, label, reasons };
+}
+
+export function riskAssessment(snapshot: IndicatorSnapshot, candles: Candle[], levels: { entry: number; stopLoss: number }): RiskAssessment {
+  const price = candles.at(-1)?.close ?? levels.entry;
+  const atrPercent = price > 0 ? snapshot.atr / price * 100 : 0;
+  const stopDistancePercent = levels.entry > 0 ? Math.abs(levels.entry - levels.stopLoss) / levels.entry * 100 : 0;
+  let score = 0;
+  const reasons: string[] = [];
+  const volatilityPoints = clamp(Math.round(atrPercent * 14), 0, 35);
+  score += volatilityPoints;
+  if (volatilityPoints >= 20) reasons.push(`ATR ${atrPercent.toFixed(2)}% cho thấy biến động cao`);
+  else if (volatilityPoints >= 10) reasons.push(`ATR ${atrPercent.toFixed(2)}% cho thấy biến động vừa`);
+  const stopPoints = clamp(Math.round(stopDistancePercent * 8), 0, 25);
+  score += stopPoints;
+  if (stopPoints >= 15) reasons.push(`Khoảng Entry–Stop Loss rộng ${stopDistancePercent.toFixed(2)}%`);
+  if (snapshot.adx < 20) { score += 18; reasons.push(`ADX ${snapshot.adx.toFixed(1)} thấp, xu hướng chưa rõ`); }
+  else if (snapshot.adx < 25) { score += 8; reasons.push(`ADX ${snapshot.adx.toFixed(1)} chỉ ở mức trung bình`); }
+  if (snapshot.volumeRatio < 0.8) { score += 10; reasons.push("Volume thấp hơn mức trung bình"); }
+  if (snapshot.rsi > 75 || snapshot.rsi < 25) { score += 12; reasons.push(`RSI ${snapshot.rsi.toFixed(1)} đang ở vùng cực đoan`); }
+  if (snapshot.label === "Neutral") { score += 12; reasons.push("Tín hiệu trung tính, độ xác nhận thấp"); }
+  if (Math.abs(snapshot.score) < 40) { score += 8; reasons.push("Điểm xu hướng chưa đủ mạnh"); }
+  score = clamp(Math.round(score), 0, 100);
+  return { score, level: score >= 60 ? "high" : score >= 30 ? "medium" : "low", reasons: reasons.length ? reasons : ["Biến động và độ xác nhận đang trong vùng kiểm soát"] };
 }
 
 export function tradeLevels(snapshot: IndicatorSnapshot, candles: Candle[]) {

@@ -1,4 +1,4 @@
-import { analyzeCandles, Candle, IndicatorSnapshot, tradeLevels } from "./indicators";
+import { analyzeCandles, Candle, IndicatorSnapshot, riskAssessment, tradeLevels } from "./indicators";
 
 export const SYMBOLS = ["BTCUSDT", "ETHUSDT"] as const;
 export const INTERVALS = ["15m", "1h", "4h", "1d"] as const;
@@ -16,6 +16,7 @@ export type MarketAnalysis = {
   candles: Candle[];
   indicators: IndicatorSnapshot;
   levels: ReturnType<typeof tradeLevels>;
+  risk: ReturnType<typeof riskAssessment>;
   updatedAt: number;
   candleOpenTime: number;
   candleClosedAt: number;
@@ -91,7 +92,8 @@ export async function analyzeMarket(exchange: ExchangeName, symbol: SymbolName, 
   const analysisCandles = closedCandles.length >= 50 ? closedCandles : candles.slice(0, -1);
   const indicators = analyzeCandles(analysisCandles);
   const closedCandle = analysisCandles.at(-1) ?? candles.at(-1)!;
-  return { exchange, symbol, interval, price: candles.at(-1)?.close ?? 0, change24h, candles, indicators, levels: tradeLevels(indicators, analysisCandles), updatedAt: Date.now(), candleOpenTime: closedCandle.openTime, candleClosedAt: closedCandle.openTime + intervalToMs(interval) };
+  const levels = tradeLevels(indicators, analysisCandles);
+  return { exchange, symbol, interval, price: candles.at(-1)?.close ?? 0, change24h, candles, indicators, levels, risk: riskAssessment(indicators, analysisCandles, levels), updatedAt: Date.now(), candleOpenTime: closedCandle.openTime, candleClosedAt: closedCandle.openTime + intervalToMs(interval) };
 }
 
 export async function analyzeAllMarkets() {

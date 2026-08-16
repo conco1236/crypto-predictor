@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeCandles, ema, rsi, tradeLevels, Candle } from "./indicators";
+import { analyzeCandles, ema, rsi, riskAssessment, tradeLevels, Candle } from "./indicators";
 
 function candlesFrom(closes: number[]): Candle[] {
   return closes.map((close, index) => ({ openTime: index * 900000, open: close - 1, high: close + 2, low: close - 2, close, volume: 100 + index }));
@@ -15,6 +15,17 @@ describe("market indicators", () => {
     const result = rsi(values);
     expect(result.at(-1)).toBe(100);
     expect(result.every(value => value >= 0 && value <= 100)).toBe(true);
+  });
+
+  it("classifies risk and returns explainable reasons", () => {
+    const candles = candlesFrom(Array.from({ length: 120 }, (_, index) => 100 + index * 1.5));
+    const market = analyzeCandles(candles);
+    const levels = tradeLevels(market, candles);
+    const risk = riskAssessment(market, candles, levels);
+    expect(risk.score).toBeGreaterThanOrEqual(0);
+    expect(risk.score).toBeLessThanOrEqual(100);
+    expect(["low", "medium", "high"]).toContain(risk.level);
+    expect(risk.reasons.length).toBeGreaterThan(0);
   });
 
   it("returns a bullish score for a sustained rising market", () => {
