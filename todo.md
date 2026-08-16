@@ -316,3 +316,11 @@
 - [x] Thêm bộ lọc equity curve theo BTC/ETH và khung thời gian
 - [x] Viết/cập nhật tests, kiểm tra database, responsive và runtime
 - [x] Cập nhật audit và tạo checkpoint
+
+## User request: Telegram inline keyboard for paper trades
+
+- [x] Thêm inline keyboard cho từng paper trade trong tin nhắn Telegram
+- [x] Xử lý callback query Mở/Đóng/Tạm dừng với xác thực chat
+- [x] Chỉ tác động paper trading, không gửi lệnh live
+- [x] Viết/cập nhật tests, kiểm tra runtime và cập nhật audit
+- [x] Tạo checkpoint handover

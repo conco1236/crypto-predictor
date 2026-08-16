@@ -3,7 +3,13 @@ import type { NewsItem } from "../market/news";
 import { invokeLLM } from "../_core/llm";
 
 export type TelegramSendResult = { ok: boolean; result?: { message_id?: number }; description?: string; error_code?: number };
-export type TelegramInlineKeyboard = { inline_keyboard: Array<Array<{ text: string; url: string }>> };
+export type TelegramInlineKeyboard = { inline_keyboard: Array<Array<{ text: string; url?: string; callback_data?: string }>> };
+
+export function buildPaperTradeInlineKeyboard(tradeId?: number, paused = false): TelegramInlineKeyboard {
+  const controls = tradeId ? [{ text: "Đóng paper", callback_data: `paper:close:${tradeId}` }] : [{ text: "Mở paper", callback_data: "paper:open" }];
+  controls.push({ text: paused ? "Tiếp tục bot" : "Tạm dừng bot", callback_data: paused ? "paper:resume" : "paper:pause" });
+  return { inline_keyboard: [controls] };
+}
 
 export function buildSignalInlineKeyboard(analysis: MarketAnalysis): TelegramInlineKeyboard {
   const chartSymbol = `${analysis.exchange.toUpperCase()}:${analysis.symbol}`;
@@ -12,7 +18,12 @@ export function buildSignalInlineKeyboard(analysis: MarketAnalysis): TelegramInl
   const liquidityUrl = `${appUrl}/?focus=liquidity&exchange=${encodeURIComponent(analysis.exchange)}&symbol=${encodeURIComponent(analysis.symbol)}&interval=${encodeURIComponent(analysis.interval)}`;
   const paperUrl = `${appUrl}/?page=trading-bot&focus=paper`;
   const pnlUrl = `${appUrl}/?page=trading-bot&focus=pnl`;
-  return { inline_keyboard: [[{ text: "Xem biểu đồ", url: chartUrl }, { text: "Kiểm tra thanh khoản", url: liquidityUrl }], [{ text: "Mở Paper Bot", url: paperUrl }, { text: "Xem P&L", url: pnlUrl }]] };
+  const openPaper = { text: "Mở paper trade", callback_data: `paper:open:${analysis.exchange}:${analysis.symbol}:${analysis.interval}` };
+  return { inline_keyboard: [[{ text: "Xem biểu đồ", url: chartUrl }, { text: "Kiểm tra thanh khoản", url: liquidityUrl }], [openPaper, { text: "Mở Paper Bot", url: paperUrl }, { text: "Xem P&L", url: pnlUrl }]] };
+}
+
+export async function answerTelegramCallbackQuery(botToken: string, callbackQueryId: string, text: string) {
+  await fetch(`https://api.telegram.org/bot${botToken}/answerCallbackQuery`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ callback_query_id: callbackQueryId, text, show_alert: false }) });
 }
 
 export async function sendTelegramMessage(botToken: string, chatId: string, text: string, replyMarkup?: TelegramInlineKeyboard): Promise<TelegramSendResult> {
