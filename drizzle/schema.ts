@@ -34,6 +34,40 @@ export const signalProcessingState = mysqlTable("signal_processing_state", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => ({ uniqueState: uniqueIndex("signal_processing_state_unique").on(table.userId, table.exchange, table.symbol, table.interval) }));
 
+export const telegramDeliveryLogs = mysqlTable("telegram_delivery_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  taskUid: varchar("taskUid", { length: 65 }),
+  exchange: varchar("exchange", { length: 20 }).notNull(),
+  symbol: varchar("symbol", { length: 20 }).notNull(),
+  interval: varchar("interval", { length: 10 }).notNull(),
+  candleOpenTime: double("candleOpenTime").notNull(),
+  candleClosedAt: double("candleClosedAt").notNull(),
+  label: mysqlEnum("label", ["Bullish", "Bearish", "Neutral"]).notNull(),
+  score: int("score").notNull(),
+  status: mysqlEnum("status", ["pending", "sent", "failed"]).default("pending").notNull(),
+  attempts: int("attempts").default(0).notNull(),
+  telegramMessageId: varchar("telegramMessageId", { length: 64 }),
+  lastError: text("lastError"),
+  sentAt: timestamp("sentAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({ deliveryUnique: uniqueIndex("telegram_delivery_candle_unique").on(table.userId, table.exchange, table.symbol, table.interval, table.candleOpenTime), deliveryLookup: index("telegram_delivery_lookup_idx").on(table.userId, table.status, table.createdAt) }));
+
+export const heartbeatRuns = mysqlTable("heartbeat_runs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  taskUid: varchar("taskUid", { length: 65 }).notNull(),
+  status: mysqlEnum("status", ["success", "failed"]).notNull(),
+  savedCount: int("savedCount").default(0).notNull(),
+  alertCount: int("alertCount").default(0).notNull(),
+  skippedCount: int("skippedCount").default(0).notNull(),
+  durationMs: int("durationMs").default(0).notNull(),
+  error: text("error"),
+  startedAt: timestamp("startedAt").defaultNow().notNull(),
+  finishedAt: timestamp("finishedAt").defaultNow().notNull(),
+}, table => ({ heartbeatLookup: index("heartbeat_runs_lookup_idx").on(table.userId, table.taskUid, table.startedAt) }));
+
 export const signalSnapshots = mysqlTable("signal_snapshots", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -56,3 +90,5 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type TelegramSetting = typeof telegramSettings.$inferSelect;
 export type SignalSnapshot = typeof signalSnapshots.$inferSelect;
+export type TelegramDeliveryLog = typeof telegramDeliveryLogs.$inferSelect;
+export type HeartbeatRun = typeof heartbeatRuns.$inferSelect;

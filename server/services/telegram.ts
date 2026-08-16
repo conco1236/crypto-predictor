@@ -1,13 +1,19 @@
 import { MarketAnalysis } from "../market/binance";
 
-export async function sendTelegramMessage(botToken: string, chatId: string, text: string) {
+export type TelegramSendResult = { ok: boolean; result?: { message_id?: number }; description?: string; error_code?: number };
+
+export async function sendTelegramMessage(botToken: string, chatId: string, text: string): Promise<TelegramSendResult> {
   const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML", disable_web_page_preview: true }),
   });
-  if (!response.ok) throw new Error(`Telegram trả về HTTP ${response.status}`);
-  return response.json();
+  const payload = await response.json().catch(() => null) as TelegramSendResult | null;
+  if (!response.ok || payload?.ok === false) {
+    const detail = payload?.description ? `: ${payload.description}` : "";
+    throw new Error(`Telegram trả về HTTP ${response.status}${detail}`);
+  }
+  return payload ?? { ok: true };
 }
 
 export function formatSignalAlert(analysis: MarketAnalysis) {

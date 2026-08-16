@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/mysql2";
 import { and, desc, eq } from "drizzle-orm";
-import { InsertUser, signalProcessingState, signalSnapshots, telegramSettings, users } from "../drizzle/schema";
+import { heartbeatRuns, InsertUser, signalProcessingState, signalSnapshots, telegramDeliveryLogs, telegramSettings, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -54,6 +54,54 @@ export async function saveTelegramSettings(userId: number, data: { botToken: str
   if (!db) throw new Error("Database chưa sẵn sàng");
   await db.insert(telegramSettings).values({ userId, ...data, scheduleCronTaskUid }).onDuplicateKeyUpdate({ set: { ...data, ...(scheduleCronTaskUid ? { scheduleCronTaskUid } : {}), updatedAt: new Date() } });
   return getTelegramSettings(userId);
+}
+
+export async function getTelegramDeliveryLog(userId: number, input: { exchange: string; symbol: string; interval: string; candleOpenTime: number }) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(telegramDeliveryLogs).where(and(eq(telegramDeliveryLogs.userId, userId), eq(telegramDeliveryLogs.exchange, input.exchange), eq(telegramDeliveryLogs.symbol, input.symbol), eq(telegramDeliveryLogs.interval, input.interval), eq(telegramDeliveryLogs.candleOpenTime, input.candleOpenTime))).limit(1);
+  return result[0];
+}
+
+export function clampHistoryLimit(value: number | undefined, fallback: number, maximum = 100) {
+  return Math.min(Math.max(value ?? fallback, 1), maximum);
+}
+
+export function buildTelegramDeliveryRecord(input: { userId: number; taskUid?: string; exchange: string; symbol: string; interval: string; candleOpenTime: number; candleClosedAt: number; label: "Bullish" | "Bearish" | "Neutral"; score: number }) {
+  return { ...input, taskUid: input.taskUid ?? null, status: "pending" as const, attempts: 0 };
+}
+
+export async function createTelegramDeliveryLog(input: { userId: number; taskUid?: string; exchange: string; symbol: string; interval: string; candleOpenTime: number; candleClosedAt: number; label: "Bullish" | "Bearish" | "Neutral"; score: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database chưa sẵn sàng");
+  const existing = await getTelegramDeliveryLog(input.userId, input);
+  if (existing) return existing;
+  await db.insert(telegramDeliveryLogs).values(buildTelegramDeliveryRecord(input));
+  return getTelegramDeliveryLog(input.userId, input);
+}
+
+export async function updateTelegramDeliveryLog(id: number, data: { status: "pending" | "sent" | "failed"; attempts?: number; telegramMessageId?: string | null; lastError?: string | null; sentAt?: Date | null }) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(telegramDeliveryLogs).set(data).where(eq(telegramDeliveryLogs.id, id));
+}
+
+export async function getTelegramDeliveryHistory(userId: number, limit = 30) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(telegramDeliveryLogs).where(eq(telegramDeliveryLogs.userId, userId)).orderBy(desc(telegramDeliveryLogs.createdAt)).limit(clampHistoryLimit(limit, 30));
+}
+
+export async function saveHeartbeatRun(input: { userId: number; taskUid: string; status: "success" | "failed"; savedCount?: number; alertCount?: number; skippedCount?: number; durationMs: number; error?: string | null; startedAt: Date; finishedAt: Date }) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(heartbeatRuns).values({ ...input, savedCount: input.savedCount ?? 0, alertCount: input.alertCount ?? 0, skippedCount: input.skippedCount ?? 0, error: input.error ?? null });
+}
+
+export async function getHeartbeatHistory(userId: number, limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(heartbeatRuns).where(eq(heartbeatRuns.userId, userId)).orderBy(desc(heartbeatRuns.startedAt)).limit(clampHistoryLimit(limit, 20));
 }
 
 export async function getProcessedCandle(userId: number, exchange: string, symbol: string, interval: string) {

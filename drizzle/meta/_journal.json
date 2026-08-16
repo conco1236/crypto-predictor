@@ -29,6 +29,13 @@
       "when": 1786866003352,
       "tag": "0003_bitter_living_tribunal",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1786872820547,
+      "tag": "0004_slow_mojo",
+      "breakpoints": true
     }
   ]
 }

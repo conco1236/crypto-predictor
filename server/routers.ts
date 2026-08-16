@@ -7,7 +7,7 @@ import { z } from "zod";
 import { parse as parseCookie } from "cookie";
 import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { analyzeAllMarkets } from "./market/binance";
-import { getLastSignal, getProcessedCandle, getRiskHistories, getRiskHistory, getSignalHistory, getTelegramSettings, markProcessedCandle, saveSignalSnapshot, saveTelegramSettings } from "./db";
+import { getHeartbeatHistory, getLastSignal, getProcessedCandle, getRiskHistories, getRiskHistory, getSignalHistory, getTelegramDeliveryHistory, getTelegramSettings, markProcessedCandle, saveSignalSnapshot, saveTelegramSettings } from "./db";
 import { formatSignalAlert, sendTelegramMessage } from "./services/telegram";
 
 function responseText(response: Awaited<ReturnType<typeof invokeLLM>>) {
@@ -88,9 +88,18 @@ export const appRouter = router({
     test: protectedProcedure.mutation(async ({ ctx }) => {
       const settings = await getTelegramSettings(ctx.user.id);
       if (!settings) throw new Error("Chưa có cấu hình Telegram");
-      await sendTelegramMessage(settings.botToken, settings.chatId, "<b>Crypto Trend Signal</b>\nKết nối Telegram thành công. Cảnh báo tự động đã sẵn sàng.");
-      return { ok: true };
+      try {
+        const result = await sendTelegramMessage(settings.botToken, settings.chatId, "<b>Crypto Trend Signal</b>\nKết nối Telegram thành công. Cảnh báo tự động đã sẵn sàng.");
+        console.info(`[TelegramTest] user=${ctx.user.id} status=sent messageId=${result.result?.message_id ?? "unknown"}`);
+        return { ok: true };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`[TelegramTest] user=${ctx.user.id} status=failed error=${message}`);
+        throw error;
+      }
     }),
+    deliveryHistory: protectedProcedure.input(z.object({ limit: z.number().min(1).max(100).default(30) }).optional()).query(({ ctx, input }) => getTelegramDeliveryHistory(ctx.user.id, input?.limit ?? 30)),
+    heartbeatHistory: protectedProcedure.input(z.object({ limit: z.number().min(1).max(100).default(20) }).optional()).query(({ ctx, input }) => getHeartbeatHistory(ctx.user.id, input?.limit ?? 20)),
   }),
 });
 

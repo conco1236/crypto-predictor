@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { formatSignalAlert } from "./telegram";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { formatSignalAlert, sendTelegramMessage } from "./telegram";
 import type { MarketAnalysis } from "../market/binance";
 
 const sample = {
@@ -14,6 +14,7 @@ const sample = {
 } as unknown as MarketAnalysis;
 
 describe("telegram alerts", () => {
+  afterEach(() => vi.unstubAllGlobals());
   it("includes symbol, trend score and risk levels", () => {
     const message = formatSignalAlert(sample);
     expect(message).toContain("BTC");
@@ -22,5 +23,15 @@ describe("telegram alerts", () => {
     expect(message).toContain("TP1");
     expect(message).toContain("SL");
     expect(message).toContain("không phải khuyến nghị đầu tư");
+  });
+
+  it("surfaces Telegram API description when delivery fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 400, json: async () => ({ ok: false, description: "chat not found" }) }));
+    await expect(sendTelegramMessage("token", "chat", "hello")).rejects.toThrow("chat not found");
+  });
+
+  it("returns Telegram message id on successful delivery", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ok: true, result: { message_id: 42 } }) }));
+    await expect(sendTelegramMessage("token", "chat", "hello")).resolves.toMatchObject({ ok: true, result: { message_id: 42 } });
   });
 });

@@ -114,3 +114,15 @@
 - [x] Kiểm thử reference lines ở desktop/tablet/mobile và lưu checkpoint mới
 - [x] Bổ sung test responsive component ở các width desktop/tablet/mobile cho reference lines
 - [x] Lưu checkpoint mới sau reference lines và cập nhật version_id 01bcda66
+- [x] Rà soát workflow Telegram từ cấu hình user đến Heartbeat/candle-close và production logs
+- [x] Kiểm tra trạng thái secrets, taskUid, cron và điều kiện skip cảnh báo
+- [x] Thiết kế trạng thái vận hành Telegram có thể quan sát từ dashboard/database
+- [x] Bổ sung hoặc điều chỉnh schema database cho cấu hình, lần gửi, lỗi và trạng thái cảnh báo
+- [x] Hoàn thiện API/query/mutation tương tác hai chiều giữa dashboard và backend
+- [x] Viết test regression cho Telegram, Heartbeat, database và retry/idempotency
+- [ ] Kiểm tra production, chạy test/build và tạo checkpoint mới
+- [ ] Xác minh botToken/chatId Telegram production không rỗng và ghi nhận kết quả test gửi thực tế vào audit
+- [x] Bổ sung test cho DB helpers delivery/heartbeat history và ràng buộc không tạo trùng candle
+- [ ] Sau khi phiên bản mới live, người dùng bấm Test Telegram một lần để xác nhận delivery thực tế; log không chứa token
+- [x] Thêm test trực tiếp cho getTelegramDeliveryHistory và getHeartbeatHistory bằng mock/select contract
+- [x] Thêm test create delivery log khi candle key đã tồn tại để xác minh idempotency/unique handling
