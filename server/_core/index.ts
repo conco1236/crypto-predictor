@@ -8,7 +8,7 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
-import { refreshSignalsHandler } from "../services/scheduled";
+import { paperPnlReportHandler, refreshSignalsHandler } from "../services/scheduled";
 import { handleTelegramPaperWebhook, isValidTelegramWebhookSecret } from "../services/telegramWebhook";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -39,6 +39,7 @@ async function startServer() {
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   app.post("/api/scheduled/refresh-signals", refreshSignalsHandler);
+  app.post("/api/scheduled/paper-pnl-report", paperPnlReportHandler);
   app.post("/api/telegram/webhook", async (req, res) => {
     const expected = process.env.TELEGRAM_WEBHOOK_SECRET ?? "";
     const received = String(req.header("x-telegram-bot-api-secret-token") ?? "");

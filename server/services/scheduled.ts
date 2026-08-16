@@ -15,12 +15,59 @@ import {
   saveNewsItem,
   saveSignalSnapshot,
   updateTelegramDeliveryLog,
+  getTelegramSettingsByPaperReportTaskUid,
+  getClosedPaperTradesForDate,
+  updatePaperReportSettings,
+  createPaperBotAudit,
 } from "../db";
 import { analyzeAllMarkets } from "../market/binance";
 import { fetchRelevantNews } from "../market/news";
 import { calibrateConfidence } from "../market/outcomes";
 import { buildSignalInlineKeyboard, formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./telegram";
 import { resolveAlertRule } from "./alertRules";
+
+function utcDateKey(offsetDays = 0) {
+  const date = new Date(Date.now() + offsetDays * 86_400_000);
+  return date.toISOString().slice(0, 10);
+}
+
+function formatDailyPaperPnl(dateKey: string, trades: Awaited<ReturnType<typeof getClosedPaperTradesForDate>>) {
+  const groups = new Map<string, { count: number; pnl: number; wins: number; losses: number }>();
+  for (const trade of trades) {
+    const symbol = trade.symbol.replace(/USDT$/, "");
+    const row = groups.get(symbol) ?? { count: 0, pnl: 0, wins: 0, losses: 0 };
+    row.count += 1; row.pnl += Number(trade.pnlPercent ?? 0);
+    if (trade.status === "take_profit") row.wins += 1;
+    if (trade.status === "stop_loss") row.losses += 1;
+    groups.set(symbol, row);
+  }
+  const lines = Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b)).map(([asset, row]) => `${asset}: ${row.count} lệnh · P&L ${row.pnl >= 0 ? "+" : ""}${row.pnl.toFixed(3)}% · TP ${row.wins} · SL ${row.losses}`);
+  const total = trades.reduce((sum, trade) => sum + Number(trade.pnlPercent ?? 0), 0);
+  return `<b>Báo cáo P&L Sandbox — ${dateKey} UTC</b>\nTổng lệnh đóng: ${trades.length}\nTổng P&L: <b>${total >= 0 ? "+" : ""}${total.toFixed(3)}%</b>\n${lines.length ? lines.join("\n") : "Chưa có lệnh sandbox đóng trong ngày."}\n\nChỉ là mô phỏng, không có lệnh live.`;
+}
+
+export async function paperPnlReportHandler(req: Request, res: Response) {
+  let taskUid: string | undefined;
+  try {
+    const user = await sdk.authenticateRequest(req);
+    if (!user.isCron || !user.taskUid) return res.status(403).json({ error: "cron-only" });
+    taskUid = user.taskUid;
+    const settings = await getTelegramSettingsByPaperReportTaskUid(taskUid);
+    if (!settings || settings.paperReportEnabled !== 1) return res.json({ ok: true, skipped: "disabled-or-orphan" });
+    const dateKey = utcDateKey(-1);
+    if (settings.paperReportLastDate === dateKey) return res.json({ ok: true, skipped: "already-sent", dateKey });
+    const trades = await getClosedPaperTradesForDate(settings.userId, dateKey);
+    const message = formatDailyPaperPnl(dateKey, trades);
+    const result = await sendTelegramMessage(settings.botToken, settings.chatId, message);
+    if (!result.ok) throw new Error(result.description ?? "Telegram report failed");
+    await updatePaperReportSettings(settings.userId, { lastDate: dateKey });
+    await createPaperBotAudit(settings.userId, "daily_pnl_report", `Đã gửi báo cáo P&L sandbox ngày ${dateKey}; ${trades.length} lệnh`);
+    return res.json({ ok: true, dateKey, trades: trades.length });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return res.status(500).json({ error: message, taskUid, timestamp: new Date().toISOString() });
+  }
+}
 
 export async function refreshSignalsHandler(req: Request, res: Response) {
   const startedAt = new Date();

@@ -9,7 +9,7 @@ import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { analyzeAllMarkets, fetchExchangeCandles, type ExchangeName, type IntervalName, type SymbolName } from "./market/binance";
 import { calibrateConfidence, evaluateSignalOutcome, summarizeOutcomes } from "./market/outcomes";
 import { fetchRelevantNews } from "./market/news";
-import { createReanalysisRequest, createTelegramDeliveryLog, deleteTelegramAlertRule, getHeartbeatHistory, getHeartbeatHistoryPage, getLastSignal, getProcessedCandle, getRecentReanalysis, getRiskHistories, getRiskHistory, getSignalHistory, getSignalSnapshotById, getTelegramAlertRules, getTelegramDeliveryHistory, getTelegramDeliveryHistoryPage, getTelegramDeliveryLog, getTelegramDeliveryLogById, getTelegramSettings, getSignalOutcomes, getNewsAiSettings, getNewsHistory, getNewsHistoryPage, getAiHistory, getAiHistoryPage, markProcessedCandle, saveAiAnalysis, saveNewsAiSettings, saveNewsItem, saveSignalSnapshot, saveTelegramSettings, updateReanalysisRequest, updateTelegramDeliveryLog, upsertSignalOutcome, upsertTelegramAlertRule, createPaperTrade, getPaperTrades, updatePaperTrade, createPaperBotAudit, getPaperBotAudit } from "./db";
+import { createReanalysisRequest, createTelegramDeliveryLog, deleteTelegramAlertRule, getHeartbeatHistory, getHeartbeatHistoryPage, getLastSignal, getProcessedCandle, getRecentReanalysis, getRiskHistories, getRiskHistory, getSignalHistory, getSignalSnapshotById, getTelegramAlertRules, getTelegramDeliveryHistory, getTelegramDeliveryHistoryPage, getTelegramDeliveryLog, getTelegramDeliveryLogById, getTelegramSettings, getSignalOutcomes, getNewsAiSettings, getNewsHistory, getNewsHistoryPage, getAiHistory, getAiHistoryPage, markProcessedCandle, saveAiAnalysis, saveNewsAiSettings, saveNewsItem, saveSignalSnapshot, saveTelegramSettings, updateReanalysisRequest, updateTelegramDeliveryLog, upsertSignalOutcome, upsertTelegramAlertRule, createPaperTrade, getPaperTrades, updatePaperTrade, createPaperBotAudit, getPaperBotAudit, updatePaperReportSettings } from "./db";
 import { buildSignalInlineKeyboard, formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./services/telegram";
 import { resolveAlertRule } from "./services/alertRules";
 import { isPaperBotPaused } from "./services/telegramWebhook";
@@ -184,6 +184,22 @@ export const appRouter = router({
         }
       }
       return saveTelegramSettings(ctx.user.id, { botToken: token, chatId: input.chatId, alertThreshold: input.alertThreshold, sendMode: input.sendMode, enabled: input.enabled ? 1 : 0 }, taskUid);
+    }),
+    setPaperReport: protectedProcedure.input(z.object({ enabled: z.boolean() })).mutation(async ({ ctx, input }) => {
+      const current = await getTelegramSettings(ctx.user.id);
+      if (!current) throw new Error("Cần lưu cấu hình Telegram trước khi bật báo cáo P&L");
+      let taskUid = current.paperReportCronTaskUid ?? undefined;
+      const session = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
+      const jobDefinition = { cron: "0 5 0 * * *", path: "/api/scheduled/paper-pnl-report", method: "POST" as const, description: "Gửi báo cáo P&L sandbox của ngày trước vào 00:05 UTC" };
+      if (process.env.NODE_ENV === "production") {
+        if (input.enabled && !taskUid) {
+          const job = await createHeartbeatJob({ name: `paper-pnl-report-${ctx.user.id}`, ...jobDefinition }, session);
+          taskUid = job.taskUid;
+        } else if (taskUid) {
+          await updateHeartbeatJob(taskUid, { ...jobDefinition, enable: input.enabled }, session);
+        }
+      }
+      return updatePaperReportSettings(ctx.user.id, { enabled: input.enabled ? 1 : 0, cronTaskUid: taskUid ?? null, ...(input.enabled ? {} : { lastDate: null }) });
     }),
     test: protectedProcedure.mutation(async ({ ctx }) => {
       const settings = await getTelegramSettings(ctx.user.id);

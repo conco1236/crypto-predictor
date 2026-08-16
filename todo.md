@@ -343,3 +343,17 @@
 - [x] Hiển thị nút Sandbox Trade thay cho live execution thật
 - [x] Audit rõ sandbox/live isolation và không dùng credentials thật
 - [x] Viết/cập nhật tests, kiểm tra runtime và tạo checkpoint
+
+## User request: daily sandbox P&L report and guarded live switch
+
+- [ ] Tạo báo cáo P&L sandbox theo ngày và nhóm BTC/ETH
+- [ ] Gửi báo cáo định kỳ qua Telegram bằng Heartbeat `/api/scheduled/*`
+- [ ] Thêm cấu hình bật/tắt báo cáo và idempotency cho lịch gửi
+- [ ] Thêm nút Sandbox → Live với validation credentials/quyền/risk và xác nhận hai bước
+- [ ] Giữ live execution bị khóa khi chưa đủ điều kiện và không gửi lệnh ngoài xác nhận
+- [ ] Viết/cập nhật tests, audit, responsive/runtime và checkpoint
+
+- [x] Daily sandbox P&L report: DB aggregation, Telegram formatter, idempotent Heartbeat callback và route `/api/scheduled/paper-pnl-report`
+- [x] UI toggle daily P&L report và guarded Sandbox → Live gate với offline/risk/wallet/connector checks
+- [x] Test scheduled daily report, idempotency, webhook security và TypeScript regression
+- [x] Lưu checkpoint sau khi hoàn thiện daily report và guarded live gate

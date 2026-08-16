@@ -21,9 +21,12 @@ export const telegramSettings = mysqlTable("telegram_settings", {
   sendMode: mysqlEnum("sendMode", ["all_candles", "strong_only"]).default("all_candles").notNull(),
   enabled: int("enabled").default(1).notNull(),
   scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }),
+  paperReportEnabled: int("paperReportEnabled").default(0).notNull(),
+  paperReportCronTaskUid: varchar("paperReportCronTaskUid", { length: 65 }),
+  paperReportLastDate: varchar("paperReportLastDate", { length: 10 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => ({ userUnique: uniqueIndex("telegram_settings_user_unique").on(table.userId), taskIndex: index("telegram_settings_task_uid_idx").on(table.scheduleCronTaskUid) }));
+}, table => ({ userUnique: uniqueIndex("telegram_settings_user_unique").on(table.userId), taskIndex: index("telegram_settings_task_uid_idx").on(table.scheduleCronTaskUid), paperReportTaskIndex: index("telegram_settings_paper_report_task_idx").on(table.paperReportCronTaskUid) }));
 
 export const telegramAlertRules = mysqlTable("telegram_alert_rules", {
   id: int("id").autoincrement().primaryKey(),

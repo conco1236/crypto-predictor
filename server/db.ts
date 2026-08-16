@@ -56,6 +56,24 @@ export async function getTelegramSettingsByTaskUid(taskUid: string) {
   return result[0];
 }
 
+export async function getTelegramSettingsByPaperReportTaskUid(taskUid: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(telegramSettings).where(eq(telegramSettings.paperReportCronTaskUid, taskUid)).limit(1);
+  return result[0];
+}
+
+export async function updatePaperReportSettings(userId: number, data: { enabled?: number; cronTaskUid?: string | null; lastDate?: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database chưa sẵn sàng");
+  const set: Record<string, unknown> = { updatedAt: new Date() };
+  if (data.enabled !== undefined) set.paperReportEnabled = data.enabled;
+  if (data.cronTaskUid !== undefined) set.paperReportCronTaskUid = data.cronTaskUid;
+  if (data.lastDate !== undefined) set.paperReportLastDate = data.lastDate;
+  await db.update(telegramSettings).set(set).where(eq(telegramSettings.userId, userId));
+  return getTelegramSettings(userId);
+}
+
 export async function saveTelegramSettings(userId: number, data: { botToken: string; chatId: string; alertThreshold: number; sendMode?: "all_candles" | "strong_only"; enabled: number }, scheduleCronTaskUid?: string) {
   const db = await getDb();
   if (!db) throw new Error("Database chưa sẵn sàng");
@@ -170,6 +188,13 @@ export async function getPaperTrades(userId: number, limit = 100) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(paperTrades).where(eq(paperTrades.userId, userId)).orderBy(desc(paperTrades.createdAt)).limit(clampHistoryLimit(limit, 100, 500));
+}
+
+export async function getClosedPaperTradesForDate(userId: number, dateKey: string) {
+  const start = new Date(`${dateKey}T00:00:00.000Z`).getTime();
+  const end = start + 86_400_000;
+  const trades = await getPaperTrades(userId, 500);
+  return trades.filter(trade => trade.status !== "open" && trade.closedAt != null && trade.closedAt >= start && trade.closedAt < end);
 }
 
 export async function updatePaperTrade(id: number, userId: number, data: { currentPrice: number; status?: "open" | "take_profit" | "stop_loss" | "cancelled"; closedAt?: number | null; exitPrice?: number | null; pnlPercent?: number }) {
