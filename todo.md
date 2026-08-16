@@ -227,3 +227,10 @@
 - [x] Thêm xuất báo cáo Backtest và phân tích hiện tại thành PDF từ dữ liệu thật
 - [x] Thêm xuất ảnh báo cáo Backtest/phân tích hiện tại từ vùng dashboard
 - [x] Viết/cập nhật tests, kiểm thử responsive/runtime và tạo checkpoint handover
+
+## User request: Light mode neutral colors and indicator tooltips
+
+- [x] Loại bỏ sắc hồng khỏi nền và các panel Light mode
+- [x] Chuẩn hóa chữ Light mode sang màu đậm, dễ đọc và đủ tương phản
+- [x] Thêm tooltip giải thích RSI, ADX, ATR, Volume, EMA/MACD và cách diễn giải
+- [x] Viết/cập nhật tests, kiểm tra responsive/accessibility/runtime và tạo checkpoint
