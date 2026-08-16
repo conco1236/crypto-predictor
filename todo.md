@@ -268,9 +268,9 @@
 
 ## Confirmed Trading Bot scope
 
-- [ ] Live trading CEX có xác nhận từng lệnh cho Binance và OKX
+- [x] Tạm hoãn live trading CEX theo yêu cầu kiểm thử offline; chưa gửi lệnh thật
 - [x] DEX giai đoạn đầu: EVM/BSC, ưu tiên Uniswap/PancakeSwap; Solana và Robinhood để phase sau
-- [ ] API key CEX chỉ quyền đọc/giao dịch, không quyền rút; secret lưu server-side
+- [x] Tạm hoãn lưu API key CEX server-side theo yêu cầu bỏ qua bước nhập API; không có credentials được lưu
 - [x] Ví DEX dùng signing flow an toàn, không lưu private key thô phía client
 - [x] Thêm risk limits, confirmation modal, kill switch và audit log trước live execution
 
@@ -280,7 +280,7 @@
 - [x] Tạo mục nhập OKX API key/secret/passphrase
 - [x] Tạo mục nhập ví DEX theo chain EVM/BSC, không yêu cầu private key thô phía client
 - [x] Hiển thị cảnh báo quyền Read/Trade, tắt Withdraw, xác nhận từng lệnh và kill switch
-- [ ] Kết nối lưu secrets server-side, validation và audit trạng thái kết nối
+- [x] Tạm hoãn kết nối secrets/validation CEX theo yêu cầu offline; trạng thái được ghi trong audit
 - [x] Viết/cập nhật tests, kiểm tra responsive/runtime và tạo checkpoint
 
 ## User request: offline Trading Bot test
