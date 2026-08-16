@@ -7,10 +7,11 @@ import Backtest from "./pages/Backtest";
 import NewsCenter from "./pages/NewsCenter";
 import Glossary from "./pages/Glossary";
 import TradingBot from "./pages/TradingBot";
+import Operations from "./pages/Operations";
 
 function App() {
   const page = new URLSearchParams(window.location.search).get("page");
-  return <ErrorBoundary><ThemeProvider defaultTheme="dark" switchable><TooltipProvider><Toaster />{page === "backtest" ? <Backtest /> : page === "news" ? <NewsCenter /> : page === "glossary" ? <Glossary /> : page === "trading-bot" ? <TradingBot /> : <Home />}</TooltipProvider></ThemeProvider></ErrorBoundary>;
+  return <ErrorBoundary><ThemeProvider defaultTheme="dark" switchable><TooltipProvider><Toaster />{page === "backtest" ? <Backtest /> : page === "news" ? <NewsCenter /> : page === "glossary" ? <Glossary /> : page === "trading-bot" ? <TradingBot /> : page === "operations" ? <Operations /> : <Home />}</TooltipProvider></ThemeProvider></ErrorBoundary>;
 }
 
 export default App;

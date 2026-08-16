@@ -357,3 +357,19 @@
 - [x] UI toggle daily P&L report và guarded Sandbox → Live gate với offline/risk/wallet/connector checks
 - [x] Test scheduled daily report, idempotency, webhook security và TypeScript regression
 - [x] Lưu checkpoint sau khi hoàn thiện daily report và guarded live gate
+
+## User request: secure CEX credentials, health dashboard and dry-run validation
+
+- [x] Thay thế cấu hình secrets CEX thật bằng mock CEX theo yêu cầu người dùng; không lưu API key thật
+- [x] Mock credential status và audit không chứa secret; quyền Withdraw luôn bị từ chối
+- [x] Thêm dry-run validation cho lệnh Long/Short với kiểm tra symbol, giá, Entry/TP/SL, risk và số dư mô phỏng
+- [x] Chặn live execution nếu dry-run, quyền mock hoặc risk preflight không đạt; yêu cầu xác nhận hai bước
+- [x] Thêm API/query và dashboard Heartbeat health, task status và lịch sử daily P&L report
+- [x] Viết tests mock security/dry-run, UI/runtime và chuẩn bị checkpoint phát hành
+
+## Scope update: mock CEX API only
+
+- [x] Thay thế yêu cầu API key thật bằng mock CEX adapter cô lập, không gọi mạng sàn
+- [x] Kiểm thử quyền Read/Trade giả lập và khẳng định Withdraw luôn bị từ chối
+- [x] Chạy dry-run validation và guarded live preflight chỉ trên mock API, không phát sinh lệnh thật
+- [x] Hoàn thiện dashboard Heartbeat/P&L history, tests và checkpoint cho mock scope
