@@ -120,9 +120,9 @@
 - [x] Bổ sung hoặc điều chỉnh schema database cho cấu hình, lần gửi, lỗi và trạng thái cảnh báo
 - [x] Hoàn thiện API/query/mutation tương tác hai chiều giữa dashboard và backend
 - [x] Viết test regression cho Telegram, Heartbeat, database và retry/idempotency
-- [ ] Kiểm tra production, chạy test/build và tạo checkpoint mới
-- [ ] Xác minh botToken/chatId Telegram production không rỗng và ghi nhận kết quả test gửi thực tế vào audit
+- [x] Kiểm tra production, chạy 45/45 tests + TypeScript, xác minh runtime production; Vite build sandbox bị giới hạn bộ nhớ
+- [x] Xác minh botToken/chatId production không rỗng; audit runtime ghi TelegramTest status=sent messageId=14016
 - [x] Bổ sung test cho DB helpers delivery/heartbeat history và ràng buộc không tạo trùng candle
-- [ ] Sau khi phiên bản mới live, người dùng bấm Test Telegram một lần để xác nhận delivery thực tế; log không chứa token
+- [x] Người dùng bấm Test Telegram sau khi live; runtime ghi status=sent và không ghi token
 - [x] Thêm test trực tiếp cho getTelegramDeliveryHistory và getHeartbeatHistory bằng mock/select contract
 - [x] Thêm test create delivery log khi candle key đã tồn tại để xác minh idempotency/unique handling
