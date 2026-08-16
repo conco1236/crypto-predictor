@@ -241,3 +241,10 @@
 - [x] Mở rộng tooltip cho EMA, MACD, Entry, Take Profit và Stop Loss
 - [x] Bổ sung biểu đồ hiệu suất Backtest trực quan từ dữ liệu backend thật
 - [x] Viết/cập nhật tests, kiểm tra route/responsive/runtime và tạo checkpoint
+
+## User request: interactive MACD RSI and white Light mode
+
+- [x] Thêm biểu đồ MACD tương tác cho từng tín hiệu bằng dữ liệu lịch sử thật
+- [x] Thêm biểu đồ RSI tương tác cho từng tín hiệu với đường tham chiếu 30/70
+- [x] Chuyển nền Light mode và các surface chính sang màu trắng sạch
+- [x] Viết/cập nhật tests, kiểm tra responsive/theme/runtime và tạo checkpoint

@@ -116,3 +116,9 @@ A new protected-by-app route `?page=glossary` provides a searchable, category-fi
 Signal cards now display EMA 9/21/50 and MACD values alongside RSI, ADX, ATR and volume, with keyboard-focusable tooltips for each. Entry, TP1 and SL also have detailed tooltips explaining their role and limitations. Backtest now includes a second responsive line chart comparing horizon P&L, expectancy and maximum drawdown by group, while keeping the original bar chart and real backend metrics.
 
 Verification: TypeScript clean, 4 test files / 16 tests passed, and mobile screenshots for Glossary and Backtest rendered without visible overflow. The preview continues to show the expected unauthenticated loading state for protected Backtest data.
+
+## Interactive MACD/RSI and white Light mode — 2026-08-16
+
+Each SignalCard now includes compact interactive MACD and RSI charts calculated from the real candle window already delivered by the market analysis endpoint. MACD shows histogram, MACD line and signal line with hover values; RSI shows the current series with 30/70 reference lines and hover values. The charts are responsive and show a clear empty state when the candle window is too short.
+
+Light-mode `background`, `card`, `popover`, secondary, muted and accent tokens were normalized to white/near-white neutral surfaces; Dark mode tokens remain unchanged. Verification: TypeScript clean, 3 test files / 10 tests passed, and the mobile preview rendered without visible overflow.
