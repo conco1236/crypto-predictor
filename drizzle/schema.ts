@@ -1,17 +1,7 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, double, index, uniqueIndex } from "drizzle-orm/mysql-core";
 
-/**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
- */
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -22,7 +12,36 @@ export const users = mysqlTable("users", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
+export const telegramSettings = mysqlTable("telegram_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  botToken: varchar("botToken", { length: 255 }).notNull(),
+  chatId: varchar("chatId", { length: 100 }).notNull(),
+  alertThreshold: int("alertThreshold").default(50).notNull(),
+  enabled: int("enabled").default(1).notNull(),
+  scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({ userUnique: uniqueIndex("telegram_settings_user_unique").on(table.userId), taskIndex: index("telegram_settings_task_uid_idx").on(table.scheduleCronTaskUid) }));
+
+export const signalSnapshots = mysqlTable("signal_snapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  symbol: varchar("symbol", { length: 20 }).notNull(),
+  interval: varchar("interval", { length: 10 }).notNull(),
+  label: mysqlEnum("label", ["Bullish", "Bearish", "Neutral"]).notNull(),
+  score: int("score").notNull(),
+  price: double("price").notNull(),
+  entry: double("entry").notNull(),
+  takeProfit1: double("takeProfit1").notNull(),
+  takeProfit2: double("takeProfit2").notNull(),
+  stopLoss: double("stopLoss").notNull(),
+  indicators: text("indicators").notNull(),
+  aiSummary: text("aiSummary"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({ lookupIndex: index("signal_snapshots_lookup_idx").on(table.userId, table.symbol, table.interval, table.createdAt) }));
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
-
-// TODO: Add your tables here
+export type TelegramSetting = typeof telegramSettings.$inferSelect;
+export type SignalSnapshot = typeof signalSnapshots.$inferSelect;

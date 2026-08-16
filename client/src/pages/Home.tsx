@@ -1,33 +1,66 @@
+import { useMemo, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { startLogin } from "@/const";
+import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { Streamdown } from 'streamdown';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Streamdown } from "streamdown";
+import { Activity, Bell, Bot, Check, ChevronRight, Clock3, Gauge, Loader2, LockKeyhole, RefreshCw, Send, Settings2, ShieldAlert, Sparkles, TrendingDown, TrendingUp, Wifi } from "lucide-react";
+import { Line, LineChart, ResponsiveContainer } from "recharts";
+import { toast } from "sonner";
 
-/**
- * All content in this page are only for example, replace with your own feature implementation
- * When building pages, remember your instructions in Frontend Workflow, Frontend Best Practices, Design Guide and Common Pitfalls
- */
+const intervals = ["15m", "1h", "4h", "1d"] as const;
+const fmt = (value: number) => value >= 1000 ? value.toLocaleString("en-US", { maximumFractionDigits: 2 }) : value.toFixed(4);
+const tone = (label: string) => label === "Bullish" ? "text-emerald-300" : label === "Bearish" ? "text-rose-300" : "text-amber-200";
+const bgTone = (label: string) => label === "Bullish" ? "bg-emerald-400/10 border-emerald-400/20" : label === "Bearish" ? "bg-rose-400/10 border-rose-400/20" : "bg-amber-300/10 border-amber-300/20";
+
+function AuthGate() {
+  return <div className="min-h-screen grid place-items-center bg-[#070b13] px-6 text-slate-100"><div className="max-w-md text-center"><div className="mx-auto mb-7 grid h-16 w-16 place-items-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10"><Activity className="h-8 w-8 text-cyan-200" /></div><p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200/80">Crypto Trend Signal</p><h1 className="text-4xl font-semibold tracking-tight">Tín hiệu rõ ràng hơn. Quyết định kỷ luật hơn.</h1><p className="mt-5 leading-7 text-slate-400">Dashboard phân tích BTC và ETH đa khung thời gian với dữ liệu Binance, chỉ báo kỹ thuật và AI tiếng Việt.</p><Button onClick={() => startLogin()} className="mt-8 h-12 w-full rounded-xl bg-cyan-200 text-slate-950 hover:bg-cyan-100">Đăng nhập để bắt đầu</Button><p className="mt-4 text-xs text-slate-500">Thông tin chỉ mang tính tham khảo, không phải khuyến nghị đầu tư.</p></div></div>;
+}
+
+function Metric({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return <div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p><p className="mt-1 text-sm font-semibold text-slate-100">{value}</p>{hint && <p className="mt-0.5 text-[11px] text-slate-500">{hint}</p>}</div>;
+}
+
+function SignalCard({ analysis }: { analysis: any }) {
+  const chart = analysis.candles.slice(-30).map((c: any, index: number) => ({ index, price: c.close }));
+  const i = analysis.indicators;
+  const l = analysis.levels;
+  return <Card className={`overflow-hidden border bg-[#0d1421]/80 shadow-2xl shadow-black/10 ${bgTone(i.label)}`}>
+    <CardHeader className="flex-row items-start justify-between space-y-0 pb-3"><div><div className="flex items-center gap-2"><span className="text-lg font-semibold text-white">{analysis.symbol.replace("USDT", "")}</span><span className="text-xs text-slate-500">{analysis.interval}</span></div><p className="mt-1 text-2xl font-semibold tracking-tight text-white">{fmt(analysis.price)}</p></div><Badge className={`border-0 bg-transparent px-0 text-xs ${tone(i.label)}`}>{i.label === "Bullish" ? <TrendingUp className="mr-1 h-3.5 w-3.5" /> : i.label === "Bearish" ? <TrendingDown className="mr-1 h-3.5 w-3.5" /> : <Gauge className="mr-1 h-3.5 w-3.5" />}{i.label}</Badge></CardHeader>
+    <CardContent className="space-y-4"><div className="h-16 -mx-2"><ResponsiveContainer width="100%" height="100%"><LineChart data={chart}><Line type="monotone" dataKey="price" stroke={i.label === "Bullish" ? "#6ee7b7" : i.label === "Bearish" ? "#fda4af" : "#fde68a"} strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div><div className="flex items-end justify-between"><div><p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Điểm xu hướng</p><p className={`mt-1 text-3xl font-semibold ${tone(i.label)}`}>{i.score > 0 ? "+" : ""}{i.score}<span className="ml-1 text-xs font-normal text-slate-500">/100</span></p></div><div className="text-right"><p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">24h</p><p className={`mt-1 text-sm font-semibold ${analysis.change24h >= 0 ? "text-emerald-300" : "text-rose-300"}`}>{analysis.change24h >= 0 ? "+" : ""}{analysis.change24h.toFixed(2)}%</p></div></div><div className="grid grid-cols-3 gap-2 rounded-xl border border-white/5 bg-black/15 p-3"><Metric label="Entry" value={fmt(l.entry)} /><Metric label="TP1" value={fmt(l.takeProfit1)} /><Metric label="SL" value={fmt(l.stopLoss)} /></div><div className="grid grid-cols-4 gap-2 border-t border-white/5 pt-3"><Metric label="RSI" value={i.rsi.toFixed(1)} /><Metric label="ADX" value={i.adx.toFixed(1)} /><Metric label="ATR" value={fmt(i.atr)} /><Metric label="Vol" value={`x${i.volumeRatio.toFixed(2)}`} /></div></CardContent>
+  </Card>;
+}
+
 export default function Home() {
-  // The useAuth hook provides authentication state.
-  // To implement login/logout, call logout(), or start login from an event
-  // handler: onClick={() => startLogin()} (imported from "@/const"). Never call
-  // startLogin() during render (no href={startLogin()}) — it mints a one-time
-  // nonce cookie and must run only at the moment of navigation.
-  let { user, loading, error, isAuthenticated, logout } = useAuth();
+  const { user, loading } = useAuth();
+  const [activeInterval, setActiveInterval] = useState<(typeof intervals)[number]>("1h");
+  const [showSettings, setShowSettings] = useState(false);
+  const [botToken, setBotToken] = useState("");
+  const [chatId, setChatId] = useState("");
+  const [threshold, setThreshold] = useState("50");
+  const [enabled, setEnabled] = useState(true);
+  const markets = trpc.market.all.useQuery(undefined, { enabled: Boolean(user), refetchInterval: 900000, staleTime: 60000 });
+  const telegram = trpc.telegram.get.useQuery(undefined, { enabled: Boolean(user) });
+  const history = trpc.market.history.useQuery({ limit: 24 }, { enabled: Boolean(user) });
+  const ai = trpc.market.aiSummary.useMutation();
+  const saveTelegram = trpc.telegram.save.useMutation({ onSuccess: () => { toast.success("Đã lưu cấu hình Telegram"); telegram.refetch(); }, onError: error => toast.error(error.message) });
+  const testTelegram = trpc.telegram.test.useMutation({ onSuccess: () => toast.success("Đã gửi tin nhắn kiểm tra"), onError: error => toast.error(error.message) });
+  const persist = trpc.market.persist.useMutation({ onSuccess: result => { toast.success(`Đã lưu ${result.saved} snapshot tín hiệu`); history.refetch(); }, onError: error => toast.error(error.message) });
+  const analyses = markets.data ?? [];
+  const filtered = analyses.filter(a => a.interval === activeInterval);
+  const payload = useMemo(() => analyses.map(a => ({ symbol: a.symbol, interval: a.interval, price: a.price, label: a.indicators.label, score: a.indicators.score, rsi: a.indicators.rsi, adx: a.indicators.adx, atr: a.indicators.atr, volumeRatio: a.indicators.volumeRatio, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, stopLoss: a.levels.stopLoss, reasons: a.indicators.reasons })), [analyses]);
+  const summary = ai.data?.summary;
+  const configured = Boolean(telegram.data);
 
-  // If theme is switchable in App.tsx, we can implement theme toggling like this:
-  // const { theme, toggleTheme } = useTheme();
+  if (loading) return <div className="min-h-screen grid place-items-center bg-[#070b13]"><Loader2 className="h-6 w-6 animate-spin text-cyan-200" /></div>;
+  if (!user) return <AuthGate />;
 
-  return (
-    <div className="min-h-screen flex flex-col">
-      <main>
-        {/* Example: lucide-react for icons */}
-        <Loader2 className="animate-spin" />
-        Example Page
-        {/* Example: Streamdown for markdown rendering */}
-        <Streamdown>Any **markdown** content</Streamdown>
-        <Button variant="default">Example Button</Button>
-      </main>
-    </div>
-  );
+  const saveConfig = () => saveTelegram.mutate({ botToken: botToken || telegram.data?.botToken || "", chatId, alertThreshold: Number(threshold), enabled });
+  return <div className="min-h-screen bg-[#070b13] text-slate-100"><header className="sticky top-0 z-30 border-b border-white/5 bg-[#070b13]/90 backdrop-blur-xl"><div className="mx-auto flex max-w-[1500px] items-center justify-between px-5 py-4 lg:px-8"><div className="flex items-center gap-3"><div className="grid h-9 w-9 place-items-center rounded-xl bg-cyan-200 text-slate-950"><Activity className="h-5 w-5" /></div><div><p className="text-sm font-semibold tracking-tight">Crypto Trend Signal</p><p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Market intelligence workspace</p></div></div><div className="flex items-center gap-2"><div className="hidden items-center gap-2 rounded-full border border-emerald-300/15 bg-emerald-300/5 px-3 py-1.5 text-xs text-emerald-200 sm:flex"><Wifi className="h-3.5 w-3.5" /> Binance live</div><Button variant="ghost" size="icon" onClick={() => markets.refetch()} className="text-slate-400 hover:bg-white/5 hover:text-white"><RefreshCw className={`h-4 w-4 ${markets.isFetching ? "animate-spin" : ""}`} /></Button><Button variant="ghost" size="icon" onClick={() => setShowSettings(v => !v)} className="text-slate-400 hover:bg-white/5 hover:text-white"><Settings2 className="h-4 w-4" /></Button><div className="ml-2 grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/5 text-xs font-semibold">{user.name?.charAt(0).toUpperCase() ?? "U"}</div></div></div></header><main className="mx-auto max-w-[1500px] space-y-6 px-5 py-7 lg:px-8"><section className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end"><div><p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-200/70">Tổng quan thị trường</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-white lg:text-4xl">Bảng điều khiển xu hướng</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">Tín hiệu được tổng hợp từ 120 nến mỗi khung, cập nhật theo dữ liệu công khai của Binance.</p></div><div className="flex items-center gap-2 text-xs text-slate-500"><Clock3 className="h-4 w-4" /> Cập nhật tự động mỗi 15 phút</div></section>{showSettings && <Card className="border-cyan-300/15 bg-[#0b1220]"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><Bell className="h-4 w-4 text-cyan-200" /> Cấu hình cảnh báo Telegram</CardTitle></CardHeader><CardContent className="grid gap-5 lg:grid-cols-[1fr_1fr_180px_auto] lg:items-end"><div><Label className="text-xs text-slate-400">Bot Token</Label><Input value={botToken} onChange={e => setBotToken(e.target.value)} placeholder={telegram.data?.botToken ?? "123456:ABC..."} type="password" className="mt-2 border-white/10 bg-black/20" /></div><div><Label className="text-xs text-slate-400">Chat ID</Label><Input value={chatId} onChange={e => setChatId(e.target.value)} placeholder="-100123456789" className="mt-2 border-white/10 bg-black/20" /></div><div><Label className="text-xs text-slate-400">Ngưỡng điểm</Label><Input value={threshold} onChange={e => setThreshold(e.target.value)} type="number" min="25" max="100" className="mt-2 border-white/10 bg-black/20" /></div><div className="flex items-center gap-3"><Switch checked={enabled} onCheckedChange={setEnabled} /><span className="text-xs text-slate-400">{enabled ? "Đang bật" : "Đang tắt"}</span><Button onClick={saveConfig} disabled={saveTelegram.isPending} className="ml-auto bg-cyan-200 text-slate-950 hover:bg-cyan-100">{saveTelegram.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Lưu</Button>{configured && <Button variant="outline" onClick={() => testTelegram.mutate()} className="border-white/10 bg-transparent">Test</Button>}</div></CardContent></Card>}{markets.isLoading ? <div className="grid min-h-[360px] place-items-center rounded-2xl border border-white/5 bg-white/[0.02]"><Loader2 className="h-6 w-6 animate-spin text-cyan-200" /></div> : markets.error ? <Card className="border-rose-300/20 bg-rose-300/5"><CardContent className="flex items-center gap-3 py-6 text-rose-200"><ShieldAlert className="h-5 w-5" /> Không thể lấy dữ liệu Binance lúc này. Hãy thử làm mới sau ít phút.</CardContent></Card> : <><Tabs value={activeInterval} onValueChange={v => setActiveInterval(v as any)}><div className="flex items-center justify-between gap-4"><TabsList className="border border-white/5 bg-white/[0.03]">{intervals.map(item => <TabsTrigger key={item} value={item} className="px-4 text-xs data-[state=active]:bg-cyan-200 data-[state=active]:text-slate-950">{item}</TabsTrigger>)}</TabsList><div className="hidden text-xs text-slate-500 md:flex md:items-center md:gap-2"><LockKeyhole className="h-3.5 w-3.5" /> Tín hiệu không tự động đặt lệnh</div></div>{intervals.map(item => <TabsContent key={item} value={item} className="mt-5"><div className="grid gap-5 xl:grid-cols-2">{filtered.map(a => <SignalCard key={`${a.symbol}-${a.interval}`} analysis={a} />)}</div></TabsContent>)}</Tabs><div className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]"><Card className="border-white/5 bg-[#0d1421]/80"><CardHeader className="flex-row items-center justify-between"><CardTitle className="flex items-center gap-2 text-base"><Sparkles className="h-4 w-4 text-cyan-200" /> Phân tích AI bằng tiếng Việt</CardTitle><Button onClick={() => ai.mutate(payload)} disabled={ai.isPending || !analyses.length} size="sm" className="bg-cyan-200 text-slate-950 hover:bg-cyan-100">{ai.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bot className="mr-2 h-4 w-4" />} Phân tích ngay</Button></CardHeader><CardContent>{summary ? <div className="prose prose-invert prose-sm max-w-none text-slate-300"><Streamdown>{summary}</Streamdown></div> : <div className="rounded-xl border border-dashed border-white/10 bg-black/10 p-8 text-center"><Sparkles className="mx-auto h-7 w-7 text-cyan-200/50" /><p className="mt-3 text-sm text-slate-400">Tạo bản tổng hợp đa khung để AI giải thích bối cảnh, kịch bản và rủi ro hiện tại.</p></div>}</CardContent></Card><Card className="border-white/5 bg-[#0d1421]/80"><CardHeader className="flex-row items-center justify-between"><CardTitle className="flex items-center gap-2 text-base"><Send className="h-4 w-4 text-cyan-200" /> Vận hành cảnh báo</CardTitle><Badge variant="outline" className={configured ? "border-emerald-300/30 text-emerald-200" : "border-amber-300/30 text-amber-200"}>{configured ? "Đã kết nối" : "Chưa cấu hình"}</Badge></CardHeader><CardContent className="space-y-4"><div className="grid grid-cols-2 gap-3"><div className="rounded-xl bg-white/[0.03] p-3"><p className="text-[10px] uppercase tracking-widest text-slate-500">Ngưỡng</p><p className="mt-1 text-xl font-semibold text-white">{telegram.data?.alertThreshold ?? threshold}<span className="text-xs text-slate-500"> điểm</span></p></div><div className="rounded-xl bg-white/[0.03] p-3"><p className="text-[10px] uppercase tracking-widest text-slate-500">Lịch sử</p><p className="mt-1 text-xl font-semibold text-white">{history.data?.length ?? 0}<span className="text-xs text-slate-500"> bản ghi</span></p></div></div><Button onClick={() => persist.mutate()} disabled={persist.isPending} variant="outline" className="w-full border-white/10 bg-transparent text-slate-200 hover:bg-white/5">{persist.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />} Lưu snapshot & kiểm tra cảnh báo</Button><p className="text-xs leading-5 text-slate-500">Tự động gửi khi điểm vượt ngưỡng và trạng thái tín hiệu thay đổi. Bot Token chỉ được dùng ở máy chủ.</p></CardContent></Card></div></>}</main></div>;
 }
