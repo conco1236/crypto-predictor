@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { refreshSignalsHandler } from "./scheduled";
 
-const { authenticateRequest, getSettings, getLast, saveSnapshot, analyze, send } = vi.hoisted(() => ({
-  authenticateRequest: vi.fn(), getSettings: vi.fn(), getLast: vi.fn(), saveSnapshot: vi.fn(), analyze: vi.fn(), send: vi.fn(),
+const { authenticateRequest, getSettings, getLast, getProcessed, markProcessed, saveSnapshot, analyze, send } = vi.hoisted(() => ({
+  authenticateRequest: vi.fn(), getSettings: vi.fn(), getLast: vi.fn(), getProcessed: vi.fn(), markProcessed: vi.fn(), saveSnapshot: vi.fn(), analyze: vi.fn(), send: vi.fn(),
 }));
 
 vi.mock("../_core/sdk", () => ({ sdk: { authenticateRequest } }));
-vi.mock("../db", () => ({ getTelegramSettingsByTaskUid: getSettings, getLastSignal: getLast, saveSignalSnapshot: saveSnapshot }));
+vi.mock("../db", () => ({ getTelegramSettingsByTaskUid: getSettings, getLastSignal: getLast, getProcessedCandle: getProcessed, markProcessedCandle: markProcessed, saveSignalSnapshot: saveSnapshot }));
 vi.mock("../market/binance", () => ({ analyzeAllMarkets: analyze }));
 vi.mock("./telegram", () => ({ formatSignalAlert: vi.fn(() => "alert"), sendTelegramMessage: send }));
 
@@ -14,7 +14,7 @@ function response() {
   return { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() } as any;
 }
 
-const market = { symbol: "BTCUSDT", interval: "1h", price: 100, indicators: { label: "Bullish", score: 75 }, levels: { entry: 99, takeProfit1: 105, takeProfit2: 110, stopLoss: 95 } } as any;
+const market = { exchange: "Binance", symbol: "BTCUSDT", interval: "1h", candleOpenTime: 1000, candleClosedAt: 4600, price: 100, indicators: { label: "Bullish", score: 75 }, levels: { entry: 99, takeProfit1: 105, takeProfit2: 110, stopLoss: 95 } } as any;
 
 describe("refreshSignalsHandler", () => {
   beforeEach(() => { vi.clearAllMocks(); analyze.mockResolvedValue([market]); saveSnapshot.mockResolvedValue(undefined); send.mockResolvedValue(undefined); });
@@ -35,10 +35,22 @@ describe("refreshSignalsHandler", () => {
     expect(res.json).toHaveBeenCalledWith({ ok: true, skipped: "orphan" });
   });
 
+  it("skips an already processed closed candle", async () => {
+    authenticateRequest.mockResolvedValue({ isCron: true, taskUid: "task-1" });
+    getSettings.mockResolvedValue({ userId: 7, enabled: 1, alertThreshold: 50, botToken: "token", chatId: "chat" });
+    getProcessed.mockResolvedValue({ candleOpenTime: 1000 });
+    const res = response();
+    await refreshSignalsHandler({} as any, res);
+    expect(saveSnapshot).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ saved: 0, alerts: 0 }));
+  });
+
   it("saves signals and alerts only after a changed strong signal", async () => {
     authenticateRequest.mockResolvedValue({ isCron: true, taskUid: "task-1" });
     getSettings.mockResolvedValue({ userId: 7, enabled: 1, alertThreshold: 50, botToken: "token", chatId: "chat" });
     getLast.mockResolvedValue({ label: "Bearish" });
+    getProcessed.mockResolvedValue(undefined);
     const res = response();
     await refreshSignalsHandler({} as any, res);
     expect(saveSnapshot).toHaveBeenCalledOnce();

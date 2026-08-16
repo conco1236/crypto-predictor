@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, signalSnapshots, telegramSettings, users } from "../drizzle/schema";
+import { InsertUser, signalProcessingState, signalSnapshots, telegramSettings, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -54,6 +54,19 @@ export async function saveTelegramSettings(userId: number, data: { botToken: str
   if (!db) throw new Error("Database chưa sẵn sàng");
   await db.insert(telegramSettings).values({ userId, ...data, scheduleCronTaskUid }).onDuplicateKeyUpdate({ set: { ...data, ...(scheduleCronTaskUid ? { scheduleCronTaskUid } : {}), updatedAt: new Date() } });
   return getTelegramSettings(userId);
+}
+
+export async function getProcessedCandle(userId: number, exchange: string, symbol: string, interval: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(signalProcessingState).where(and(eq(signalProcessingState.userId, userId), eq(signalProcessingState.exchange, exchange), eq(signalProcessingState.symbol, symbol), eq(signalProcessingState.interval, interval))).limit(1);
+  return result[0];
+}
+
+export async function markProcessedCandle(input: { userId: number; exchange: string; symbol: string; interval: string; candleOpenTime: number }) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(signalProcessingState).values(input).onDuplicateKeyUpdate({ set: { candleOpenTime: input.candleOpenTime, updatedAt: new Date() } });
 }
 
 export async function saveSignalSnapshot(input: {

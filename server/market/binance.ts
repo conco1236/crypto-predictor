@@ -17,6 +17,8 @@ export type MarketAnalysis = {
   indicators: IndicatorSnapshot;
   levels: ReturnType<typeof tradeLevels>;
   updatedAt: number;
+  candleOpenTime: number;
+  candleClosedAt: number;
 };
 
 const BINANCE_BASE = "https://api.binance.com";
@@ -75,10 +77,21 @@ export async function fetch24hChange(exchange: ExchangeName, symbol: SymbolName)
   } catch { return 0; }
 }
 
+export function intervalToMs(interval: IntervalName) {
+  return ({ "15m": 15, "1h": 60, "4h": 240, "1d": 1440 }[interval]) * 60_000;
+}
+
+export function isCandleClosed(openTime: number, interval: IntervalName, now = Date.now()) {
+  return openTime + intervalToMs(interval) <= now;
+}
+
 export async function analyzeMarket(exchange: ExchangeName, symbol: SymbolName, interval: IntervalName): Promise<MarketAnalysis> {
   const [candles, change24h] = await Promise.all([fetchExchangeCandles(exchange, symbol, interval), fetch24hChange(exchange, symbol)]);
-  const indicators = analyzeCandles(candles);
-  return { exchange, symbol, interval, price: candles.at(-1)?.close ?? 0, change24h, candles, indicators, levels: tradeLevels(indicators, candles), updatedAt: Date.now() };
+  const closedCandles = candles.filter(candle => isCandleClosed(candle.openTime, interval));
+  const analysisCandles = closedCandles.length >= 50 ? closedCandles : candles.slice(0, -1);
+  const indicators = analyzeCandles(analysisCandles);
+  const closedCandle = analysisCandles.at(-1) ?? candles.at(-1)!;
+  return { exchange, symbol, interval, price: candles.at(-1)?.close ?? 0, change24h, candles, indicators, levels: tradeLevels(indicators, analysisCandles), updatedAt: Date.now(), candleOpenTime: closedCandle.openTime, candleClosedAt: closedCandle.openTime + intervalToMs(interval) };
 }
 
 export async function analyzeAllMarkets() {

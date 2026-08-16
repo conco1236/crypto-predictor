@@ -7,7 +7,7 @@ import { z } from "zod";
 import { parse as parseCookie } from "cookie";
 import { createHeartbeatJob } from "./_core/heartbeat";
 import { analyzeAllMarkets } from "./market/binance";
-import { getLastSignal, getSignalHistory, getTelegramSettings, saveSignalSnapshot, saveTelegramSettings } from "./db";
+import { getLastSignal, getProcessedCandle, getSignalHistory, getTelegramSettings, markProcessedCandle, saveSignalSnapshot, saveTelegramSettings } from "./db";
 import { formatSignalAlert, sendTelegramMessage } from "./services/telegram";
 
 function responseText(response: Awaited<ReturnType<typeof invokeLLM>>) {
@@ -46,10 +46,13 @@ export const appRouter = router({
     persist: protectedProcedure.mutation(async ({ ctx }) => {
       const analyses = await analyzeAllMarkets();
       for (const a of analyses) {
+        const processed = await getProcessedCandle(ctx.user.id, a.exchange, a.symbol, a.interval);
+        if (processed && processed.candleOpenTime >= a.candleOpenTime) continue;
         const previous = await getLastSignal(ctx.user.id, a.exchange, a.symbol, a.interval);
         const settings = await getTelegramSettings(ctx.user.id);
         const changed = !previous || previous.label !== a.indicators.label;
-        await saveSignalSnapshot({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, price: a.price, label: a.indicators.label, score: a.indicators.score, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify(a.indicators) });
+        await saveSignalSnapshot({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, price: a.price, label: a.indicators.label, score: a.indicators.score, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
+        await markProcessedCandle({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
         if (settings?.enabled && Math.abs(a.indicators.score) >= settings.alertThreshold && changed && settings.botToken && settings.chatId) {
           await sendTelegramMessage(settings.botToken, settings.chatId, formatSignalAlert(a));
         }
@@ -70,7 +73,7 @@ export const appRouter = router({
       let taskUid = current?.scheduleCronTaskUid ?? undefined;
       if (!taskUid && process.env.NODE_ENV === "production") {
         const session = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
-        const job = await createHeartbeatJob({ name: `refresh-signals-${ctx.user.id}`, cron: "0 */15 * * * *", path: "/api/scheduled/refresh-signals", description: "Làm mới tín hiệu BTC/ETH và gửi cảnh báo Telegram mỗi 15 phút" }, session);
+        const job = await createHeartbeatJob({ name: `refresh-signals-${ctx.user.id}`, cron: "0 * * * * *", path: "/api/scheduled/refresh-signals", description: "Kiểm tra nến đã đóng và gửi cảnh báo Telegram mỗi phút" }, session);
         taskUid = job.taskUid;
       }
       return saveTelegramSettings(ctx.user.id, { botToken: token, chatId: input.chatId, alertThreshold: input.alertThreshold, enabled: input.enabled ? 1 : 0 }, taskUid);

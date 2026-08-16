@@ -16,6 +16,7 @@ export function formatSignalAlert(analysis: MarketAnalysis) {
   return [
     `<b>Crypto Trend Signal — ${analysis.symbol.replace("USDT", "")}</b>`,
     `Sàn: <b>${analysis.exchange}</b> | Khung: <b>${analysis.interval}</b> | Tín hiệu: <b>${i.label}</b> (${i.score > 0 ? "+" : ""}${i.score}/100)`,
+    `Nến đóng: <b>${new Date(analysis.candleClosedAt).toLocaleString("vi-VN")}</b>`,
     `Giá: <b>${analysis.price.toLocaleString("en-US", { maximumFractionDigits: 2 })}</b> | 24h: ${analysis.change24h >= 0 ? "+" : ""}${analysis.change24h.toFixed(2)}%`,
     `Kế hoạch: ${l.side} | Entry ${l.entry.toFixed(2)} | TP1 ${l.takeProfit1.toFixed(2)} | TP2 ${l.takeProfit2.toFixed(2)} | SL ${l.stopLoss.toFixed(2)}`,
     `RSI ${i.rsi.toFixed(1)} | ADX ${i.adx.toFixed(1)} | ATR ${i.atr.toFixed(2)} | Volume x${i.volumeRatio.toFixed(2)}`,

@@ -25,5 +25,14 @@
 - [x] Bổ sung test adapter đa sàn và tạo checkpoint phiên bản đa sàn
 - [x] Hiển thị rõ trường exchange trong lịch sử tín hiệu để người dùng tra cứu theo nguồn sàn
 - [x] Tạo checkpoint mới sau các thay đổi đa sàn và xác nhận todo đã cập nhật
-- [ ] Tạo checkpoint mới sau khi thêm Binance/Bybit/OKX, lịch sử exchange và AI/Telegram đa sàn
-- [ ] Đọc lại todo.md sau khi tạo checkpoint để xác nhận trạng thái đã lưu đúng
+- [x] Tạo checkpoint mới sau khi thêm Binance/Bybit/OKX, lịch sử exchange và AI/Telegram đa sàn
+- [x] Đọc lại todo.md sau khi tạo checkpoint để xác nhận trạng thái đã lưu đúng
+- [x] Cập nhật dashboard tự động theo chu kỳ ngắn mà không dùng setInterval trong server
+- [x] Xác định nến đã đóng theo openTime + interval và loại bỏ nến đang hình thành khỏi cảnh báo
+- [x] Lưu last processed candle key theo exchange/symbol/interval để chống gửi trùng Telegram
+- [x] Gửi Telegram ngay sau mỗi lần refresh khi nến đóng và tín hiệu đạt ngưỡng/thay đổi
+- [x] Hiển thị trạng thái lần cập nhật gần nhất và nến đã đóng trên dashboard
+- [x] Bổ sung tests nến đóng, chống trùng và checkpoint phiên bản mới
+- [x] Hiển thị timestamp cập nhật lần cuối động trên dashboard dựa trên dữ liệu refetch
+- [x] Thêm test trường hợp candleOpenTime đã xử lý thì Heartbeat bỏ qua snapshot và Telegram
+- [ ] Tạo checkpoint sau thay đổi continuous update/candle-close và đọc lại todo.md

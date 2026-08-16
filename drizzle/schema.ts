@@ -24,6 +24,16 @@ export const telegramSettings = mysqlTable("telegram_settings", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => ({ userUnique: uniqueIndex("telegram_settings_user_unique").on(table.userId), taskIndex: index("telegram_settings_task_uid_idx").on(table.scheduleCronTaskUid) }));
 
+export const signalProcessingState = mysqlTable("signal_processing_state", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  exchange: varchar("exchange", { length: 20 }).notNull(),
+  symbol: varchar("symbol", { length: 20 }).notNull(),
+  interval: varchar("interval", { length: 10 }).notNull(),
+  candleOpenTime: double("candleOpenTime").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({ uniqueState: uniqueIndex("signal_processing_state_unique").on(table.userId, table.exchange, table.symbol, table.interval) }));
+
 export const signalSnapshots = mysqlTable("signal_snapshots", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),

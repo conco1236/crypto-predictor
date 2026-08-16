@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchExchangeCandles } from "./binance";
+import { fetchExchangeCandles, intervalToMs, isCandleClosed } from "./binance";
 
 const candle = (openTime: number, base: number) => [String(openTime), String(base), String(base + 2), String(base - 1), String(base + 1), "10"];
 
@@ -10,6 +10,12 @@ function response(body: unknown) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("multi-exchange market adapters", () => {
+  it("detects only fully closed candles", () => {
+    const openTime = 1_000_000;
+    expect(intervalToMs("15m")).toBe(900_000);
+    expect(isCandleClosed(openTime, "15m", openTime + 899_999)).toBe(false);
+    expect(isCandleClosed(openTime, "15m", openTime + 900_000)).toBe(true);
+  });
   it.each([
     ["Binance", "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m&limit=50"],
     ["Bybit", "https://api.bybit.com/v5/market/kline?category=spot&symbol=BTCUSDT&interval=15&limit=50"],
