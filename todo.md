@@ -282,3 +282,11 @@
 - [x] Hiển thị cảnh báo quyền Read/Trade, tắt Withdraw, xác nhận từng lệnh và kill switch
 - [ ] Kết nối lưu secrets server-side, validation và audit trạng thái kết nối
 - [x] Viết/cập nhật tests, kiểm tra responsive/runtime và tạo checkpoint
+
+## User request: offline Trading Bot test
+
+- [x] Chuyển trường Passphrase khỏi OKX sang khu vực cấu hình ví DEX
+- [x] Ẩn/bỏ qua form nhập API sàn trong chế độ kiểm thử app offline
+- [x] Hiển thị rõ offline/paper mode và không gửi lệnh thật
+- [x] Kiểm thử route Trading Bot, responsive, TypeScript và runtime
+- [x] Cập nhật audit và tạo checkpoint

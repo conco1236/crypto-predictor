@@ -134,3 +134,9 @@ Verification: TypeScript clean, 3 test files / 10 tests passed, dev server resta
 A dedicated `?page=trading-bot` page now provides separate input sections for Binance API key/secret, OKX API key/secret/passphrase, and a public EVM/BSC wallet address. Secret fields are masked with reveal controls, wallet input explicitly rejects the private-key workflow, and the page displays the intended safety boundaries: Read/Trade only, no withdrawals, per-order confirmation, maximum risk per order and a kill-switch-style enable toggle.
 
 The current form performs local validation messaging only and does not place orders. The server-side secrets request was rejected by the user, so no API credentials were stored and no exchange connection was activated. This is intentional: live execution remains disabled until credentials are supplied through the secure secrets flow and exchange-specific server integration is implemented. Verification: TypeScript clean, 4 test files / 13 tests passed, and mobile preview rendered the Trading Bot form without visible overflow.
+
+## Offline Trading Bot test mode — 2026-08-16
+
+The Trading Bot page now defaults to offline test mode. Binance and OKX API input is skipped and the UI explicitly states that no credentials are read, no exchange connection is tested and no real order is submitted. The Passphrase field was moved from the OKX section into the EVM/BSC DEX wallet section, alongside the public wallet address; private keys remain explicitly disallowed. The live bot switch remains off by default and per-order confirmation remains enabled.
+
+Verification: dev server restarted cleanly, full-page mobile preview rendered without visible overflow, TypeScript clean, and 4 test files / 13 tests passed.
