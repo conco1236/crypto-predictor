@@ -5,7 +5,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { parse as parseCookie } from "cookie";
-import { createHeartbeatJob } from "./_core/heartbeat";
+import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { analyzeAllMarkets } from "./market/binance";
 import { getLastSignal, getProcessedCandle, getSignalHistory, getTelegramSettings, markProcessedCandle, saveSignalSnapshot, saveTelegramSettings } from "./db";
 import { formatSignalAlert, sendTelegramMessage } from "./services/telegram";
@@ -71,10 +71,15 @@ export const appRouter = router({
       const token = input.botToken.includes("•") ? current?.botToken ?? "" : input.botToken;
       if (!token) throw new Error("Cần nhập Telegram Bot Token hợp lệ");
       let taskUid = current?.scheduleCronTaskUid ?? undefined;
-      if (!taskUid && process.env.NODE_ENV === "production") {
+      if (process.env.NODE_ENV === "production") {
         const session = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
-        const job = await createHeartbeatJob({ name: `refresh-signals-${ctx.user.id}`, cron: "0 * * * * *", path: "/api/scheduled/refresh-signals", description: "Kiểm tra nến đã đóng và gửi cảnh báo Telegram mỗi phút" }, session);
-        taskUid = job.taskUid;
+        const jobDefinition = { cron: "0 * * * * *", path: "/api/scheduled/refresh-signals", method: "POST" as const, description: "Kiểm tra nến đã đóng và gửi cảnh báo Telegram mỗi phút" };
+        if (!taskUid) {
+          const job = await createHeartbeatJob({ name: `refresh-signals-${ctx.user.id}`, ...jobDefinition }, session);
+          taskUid = job.taskUid;
+        } else {
+          await updateHeartbeatJob(taskUid, jobDefinition, session);
+        }
       }
       return saveTelegramSettings(ctx.user.id, { botToken: token, chatId: input.chatId, alertThreshold: input.alertThreshold, enabled: input.enabled ? 1 : 0 }, taskUid);
     }),

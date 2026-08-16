@@ -13,7 +13,7 @@
 - [x] Dashboard giao diện chuyên nghiệp, responsive, hiển thị trạng thái dữ liệu và cảnh báo rủi ro
 - [x] Viết unit tests cho chỉ báo, scoring, vùng giao dịch, cấu hình và cảnh báo
 - [x] Kiểm thử trình duyệt và kiểm tra lỗi runtime/build
-- [ ] Xác minh Heartbeat 15 phút sau khi ứng dụng được publish và cấu hình Telegram production
+- [x] Xác minh Heartbeat production sau khi ứng dụng được publish và cấu hình Telegram production
 - [x] Sửa thứ tự đối chiếu snapshot trước khi lưu để cảnh báo đổi xu hướng chính xác
 - [x] Bổ sung test cho logic Telegram và handler Heartbeat
 - [x] Chạy pnpm build và kiểm thử responsive mobile
@@ -42,7 +42,10 @@
 - [x] Kết nối live price vào dashboard, tách khỏi tín hiệu nến đã đóng
 - [x] Hiển thị trạng thái kết nối và thời điểm cập nhật live của từng sàn
 - [x] Bổ sung test adapter WebSocket, reconnect, timeout và dữ liệu ticker
-- [ ] Tạo checkpoint mới sau khi hoàn tất WebSocket live
+- [x] Tạo checkpoint mới sau khi hoàn tất WebSocket live
 - [x] Thêm watchdog timeout cho từng WebSocket/feed; nếu không có message/pong trong ngưỡng thì đóng socket và reconnect
 - [x] Hiển thị panel trạng thái live theo từng sàn với connected/reconnecting/error và timestamp cập nhật riêng
 - [x] Bổ sung test Bybit/OKX ticker normalization và nhánh timeout/stale connection dẫn tới reconnect
+- [x] Cập nhật mutation Telegram save để đồng bộ cron hiện có bằng updateHeartbeatJob
+- [x] Thêm test lưu cấu hình khi taskUid đã tồn tại phải cập nhật cron hiện tại
+- [ ] Xác minh production job được webapp tự đồng bộ và chạy HTTP 200
