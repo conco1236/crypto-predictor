@@ -169,3 +169,8 @@
 - [x] Bổ sung dashboard quality metrics hit rate/expectancy, max drawdown và breakdown theo asset/exchange/interval
 - [x] Áp dụng confidence calibration thống nhất cho scheduled Telegram, manual persist, SignalCard và alert formatting
 - [x] Thêm regression tests xác minh scheduled Telegram alerts và dashboard dùng confidence đã calibration
+- [x] Rà soát candle-close cho 15m/1h/4h/1d và điều kiện Heartbeat gửi Telegram
+- [x] Bảo đảm Telegram alert chứa xu hướng, Entry, TP1/TP2, SL, confidence và nguồn dữ liệu
+- [x] Bổ sung phân tích AI tiếng Việt vào Telegram alert sau khi nến đóng, có fallback rõ ràng khi AI lỗi
+- [x] Kiểm thử idempotency, retry, delivery log và không gửi cho nến đang hình thành
+- [x] Kiểm tra runtime responsive và tạo checkpoint bàn giao cho luồng Telegram mới

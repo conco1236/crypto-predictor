@@ -8,7 +8,7 @@ const { authenticateRequest, getSettings, getRules, getLast, getProcessed, getDe
 vi.mock("../_core/sdk", () => ({ sdk: { authenticateRequest } }));
 vi.mock("../db", () => ({ getTelegramSettingsByTaskUid: getSettings, getTelegramAlertRules: getRules, getLastSignal: getLast, getProcessedCandle: getProcessed, getTelegramDeliveryLog: getDelivery, getSignalOutcomes, createTelegramDeliveryLog: createDelivery, updateTelegramDeliveryLog: updateDelivery, markProcessedCandle: markProcessed, saveSignalSnapshot: saveSnapshot, saveHeartbeatRun: saveHeartbeat }));
 vi.mock("../market/binance", () => ({ analyzeAllMarkets: analyze }));
-vi.mock("./telegram", () => ({ formatSignalAlert: vi.fn(() => "alert"), sendTelegramMessage: send }));
+vi.mock("./telegram", () => ({ formatSignalAlert: vi.fn(() => "alert"), generateSignalAiAnalysis: vi.fn(async () => "AI test analysis"), sendTelegramMessage: send }));
 
 function response() {
   return { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() } as any;

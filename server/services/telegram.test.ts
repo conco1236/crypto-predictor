@@ -25,6 +25,12 @@ describe("telegram alerts", () => {
     expect(message).toContain("không phải khuyến nghị đầu tư");
   });
 
+  it("includes the AI analysis section when generated for a candle-close alert", () => {
+    const message = formatSignalAlert(sample, "Xu hướng tăng được xác nhận; vô hiệu hóa nếu thủng SL.");
+    expect(message).toContain("Phân tích AI");
+    expect(message).toContain("Xu hướng tăng được xác nhận");
+  });
+
   it("surfaces Telegram API description when delivery fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 400, json: async () => ({ ok: false, description: "chat not found" }) }));
     await expect(sendTelegramMessage("token", "chat", "hello")).rejects.toThrow("chat not found");

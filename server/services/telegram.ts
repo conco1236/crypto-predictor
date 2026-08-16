@@ -1,4 +1,5 @@
-import { MarketAnalysis } from "../market/binance";
+import type { MarketAnalysis } from "../market/binance";
+import { invokeLLM } from "../_core/llm";
 
 export type TelegramSendResult = { ok: boolean; result?: { message_id?: number }; description?: string; error_code?: number };
 
@@ -16,7 +17,30 @@ export async function sendTelegramMessage(botToken: string, chatId: string, text
   return payload ?? { ok: true };
 }
 
-export function formatSignalAlert(analysis: MarketAnalysis) {
+export async function generateSignalAiAnalysis(analysis: MarketAnalysis) {
+  const i = analysis.indicators;
+  const l = analysis.levels;
+  try {
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: "Bạn là chuyên gia phân tích crypto. Trả lời hoàn toàn bằng tiếng Việt, tối đa 3 câu, chỉ dùng dữ liệu được cung cấp. Nêu xu hướng, điều kiện xác nhận/vô hiệu hóa và rủi ro. Không bịa tin tức, không hứa hẹn lợi nhuận và nhắc đây không phải khuyến nghị đầu tư." },
+        { role: "user", content: `Phân tích tín hiệu ${analysis.symbol} ${analysis.interval} trên ${analysis.exchange}. Xu hướng ${i.label}, điểm ${i.score}/100, confidence ${i.confidence}/100, RSI ${i.rsi.toFixed(1)}, ADX ${i.adx.toFixed(1)}, ATR ${i.atr.toFixed(2)}, volume x${i.volumeRatio.toFixed(2)}, Entry ${l.entry.toFixed(2)}, TP1 ${l.takeProfit1.toFixed(2)}, SL ${l.stopLoss.toFixed(2)}. Lý do: ${(i.reasons ?? []).slice(0, 4).join("; ")}` },
+      ],
+      reasoning: { effort: "low" },
+    });
+    const content = response.choices?.[0]?.message?.content;
+    return typeof content === "string" && content.trim() ? content.trim() : "AI không trả về phân tích; tham khảo các chỉ báo kỹ thuật bên dưới.";
+  } catch (error) {
+    console.warn("[TelegramAI] fallback", error instanceof Error ? error.message : String(error));
+    return "AI tạm thời không khả dụng; tín hiệu vẫn dựa trên các chỉ báo kỹ thuật và mức Entry/TP/SL bên dưới.";
+  }
+}
+
+function escapeTelegramHtml(value: string) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+export function formatSignalAlert(analysis: MarketAnalysis, aiAnalysis?: string) {
   const i = analysis.indicators;
   const l = analysis.levels;
   const confidenceReasons = i.confidenceReasons ?? [];
@@ -30,6 +54,7 @@ export function formatSignalAlert(analysis: MarketAnalysis) {
     `Kế hoạch: ${l.side} | Entry ${l.entry.toFixed(2)} | TP1 ${l.takeProfit1.toFixed(2)} | TP2 ${l.takeProfit2.toFixed(2)} | SL ${l.stopLoss.toFixed(2)}`,
     `RSI ${i.rsi.toFixed(1)} | ADX ${i.adx.toFixed(1)} | ATR ${i.atr.toFixed(2)} | Volume x${i.volumeRatio.toFixed(2)}`,
     `Dữ liệu: ${dataQuality.candleCount} nến, ${dataQuality.closedCandleCount} nến đã đóng, độ trễ nguồn ${dataQuality.sourceLatencyMs}ms${dataQuality.warnings.length ? ` — ${dataQuality.warnings.join("; ")}` : ""}`,
+    `<b>Phân tích AI:</b> ${escapeTelegramHtml(aiAnalysis ?? "Chưa tạo phân tích AI cho lần gửi này.")}`,
     `<i>Chỉ mang tính tham khảo, không phải khuyến nghị đầu tư.</i>`,
   ].join("\n");
 }
