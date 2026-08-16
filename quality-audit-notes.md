@@ -122,3 +122,9 @@ Verification: TypeScript clean, 4 test files / 16 tests passed, and mobile scree
 Each SignalCard now includes compact interactive MACD and RSI charts calculated from the real candle window already delivered by the market analysis endpoint. MACD shows histogram, MACD line and signal line with hover values; RSI shows the current series with 30/70 reference lines and hover values. The charts are responsive and show a clear empty state when the candle window is too short.
 
 Light-mode `background`, `card`, `popover`, secondary, muted and accent tokens were normalized to white/near-white neutral surfaces; Dark mode tokens remain unchanged. Verification: TypeScript clean, 3 test files / 10 tests passed, and the mobile preview rendered without visible overflow.
+
+## Synchronized charts and candle window — 2026-08-16
+
+Price, MACD and RSI charts in each SignalCard now share a stable Recharts `syncId`, so hover/cursor selection is synchronized to the same candle time. The indicator panel includes 30, 60 and 120 candle buttons; the price chart uses the same selected window. MACD/RSI can be opened in an accessible full-screen dialog with a close control and the synchronized cursor retained.
+
+Verification: TypeScript clean, 3 test files / 10 tests passed, dev server restarted cleanly and mobile preview rendered without visible overflow.

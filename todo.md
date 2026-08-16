@@ -248,3 +248,10 @@
 - [x] Thêm biểu đồ RSI tương tác cho từng tín hiệu với đường tham chiếu 30/70
 - [x] Chuyển nền Light mode và các surface chính sang màu trắng sạch
 - [x] Viết/cập nhật tests, kiểm tra responsive/theme/runtime và tạo checkpoint
+
+## User request: synchronized indicator charts and candle window
+
+- [x] Đồng bộ con trỏ thời gian giữa biểu đồ giá, MACD và RSI
+- [x] Thêm nút phóng to cho biểu đồ MACD và RSI với modal accessible
+- [x] Thêm lựa chọn hiển thị 30, 60 hoặc 120 nến bằng dữ liệu lịch sử thật
+- [x] Viết/cập nhật tests, kiểm tra tương tác responsive/theme/runtime và tạo checkpoint
