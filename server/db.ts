@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/mysql2";
-import { and, desc, eq } from "drizzle-orm";
-import { heartbeatRuns, InsertUser, signalOutcomes, signalProcessingState, signalSnapshots, telegramAlertRules, telegramDeliveryLogs, telegramSettings, users } from "../drizzle/schema";
+import { and, desc, eq, like } from "drizzle-orm";
+import { aiAnalyses, heartbeatRuns, InsertUser, newsAiSettings, newsItems, signalOutcomes, signalProcessingState, signalSnapshots, telegramAlertRules, telegramDeliveryLogs, telegramSettings, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -203,10 +203,57 @@ export async function saveSignalSnapshot(input: {
   await db.insert(signalSnapshots).values(input);
 }
 
-export async function getSignalHistory(userId: number, limit = 40) {
+export async function getSignalHistory(userId: number, limit = 40, filters?: { symbol?: string; interval?: string }) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(signalSnapshots).where(eq(signalSnapshots.userId, userId)).orderBy(desc(signalSnapshots.createdAt)).limit(limit);
+  const conditions = [eq(signalSnapshots.userId, userId)];
+  if (filters?.symbol) conditions.push(like(signalSnapshots.symbol, `%${filters.symbol}%`));
+  if (filters?.interval) conditions.push(eq(signalSnapshots.interval, filters.interval));
+  return db.select().from(signalSnapshots).where(and(...conditions)).orderBy(desc(signalSnapshots.createdAt)).limit(clampHistoryLimit(limit, 40, 200));
+}
+
+export async function getNewsAiSettings(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(newsAiSettings).where(eq(newsAiSettings.userId, userId)).limit(1);
+  return result[0];
+}
+
+export async function saveNewsAiSettings(userId: number, input: { rssSources: string[]; newsLookbackHours: number; aiIntervals: string[]; enabled: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database chưa sẵn sàng");
+  await db.insert(newsAiSettings).values({ userId, rssSources: JSON.stringify(input.rssSources), newsLookbackHours: input.newsLookbackHours, aiIntervals: JSON.stringify(input.aiIntervals), enabled: input.enabled }).onDuplicateKeyUpdate({ set: { rssSources: JSON.stringify(input.rssSources), newsLookbackHours: input.newsLookbackHours, aiIntervals: JSON.stringify(input.aiIntervals), enabled: input.enabled, updatedAt: new Date() } });
+  return getNewsAiSettings(userId);
+}
+
+export async function saveNewsItem(userId: number, input: { symbol: string; source: string; url: string; title: string; summary?: string; publishedAt: number }) {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(newsItems).where(and(eq(newsItems.userId, userId), eq(newsItems.url, input.url), eq(newsItems.symbol, input.symbol))).limit(1);
+  if (!existing[0]) await db.insert(newsItems).values({ userId, ...input, summary: input.summary ?? null });
+}
+
+export async function saveAiAnalysis(userId: number, input: { snapshotId?: number; symbol: string; interval: string; analysis: string; newsItemIds?: number[] }) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(aiAnalyses).values({ userId, snapshotId: input.snapshotId ?? null, symbol: input.symbol, interval: input.interval, analysis: input.analysis, newsItemIds: JSON.stringify(input.newsItemIds ?? []) });
+}
+
+export async function getNewsHistory(userId: number, limit = 50, symbol?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(newsItems.userId, userId)];
+  if (symbol) conditions.push(like(newsItems.symbol, `%${symbol}%`));
+  return db.select().from(newsItems).where(and(...conditions)).orderBy(desc(newsItems.publishedAt)).limit(clampHistoryLimit(limit, 50, 200));
+}
+
+export async function getAiHistory(userId: number, limit = 50, filters?: { symbol?: string; interval?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(aiAnalyses.userId, userId)];
+  if (filters?.symbol) conditions.push(like(aiAnalyses.symbol, `%${filters.symbol}%`));
+  if (filters?.interval) conditions.push(eq(aiAnalyses.interval, filters.interval));
+  return db.select().from(aiAnalyses).where(and(...conditions)).orderBy(desc(aiAnalyses.createdAt)).limit(clampHistoryLimit(limit, 50, 200));
 }
 
 export async function getLastSignal(userId: number, exchange: string, symbol: string, interval: string) {

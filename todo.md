@@ -188,3 +188,8 @@
 - [x] Giữ gửi Telegram sau khi nến 1h đóng, kèm fallback khi news/AI lỗi và không gửi trùng
 - [x] Hiển thị nguồn tin, thời điểm tin và mức ảnh hưởng trong Telegram/dashboard
 - [x] Bổ sung test, audit, build và checkpoint cho luồng AI/news 1h
+- [x] Thêm settings theo user cho RSS sources, news lookback và AI timeframe
+- [x] Lưu news items và AI analysis history có source/timestamp/symbol/interval
+- [x] Thêm API/UI hiển thị lịch sử tin tức và phân tích AI
+- [x] Thêm filter/search/pagination lịch sử tín hiệu theo symbol/coin
+- [x] Migration, test, responsive audit và checkpoint cho settings/news/signal history

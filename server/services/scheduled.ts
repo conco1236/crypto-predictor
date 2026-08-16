@@ -8,8 +8,11 @@ import {
   getTelegramDeliveryLog,
   getTelegramSettingsByTaskUid,
   getTelegramAlertRules,
+  getNewsAiSettings,
   markProcessedCandle,
+  saveAiAnalysis,
   saveHeartbeatRun,
+  saveNewsItem,
   saveSignalSnapshot,
   updateTelegramDeliveryLog,
 } from "../db";
@@ -35,6 +38,7 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
     if (!settings) return res.json({ ok: true, skipped: "orphan" });
     userId = settings.userId;
     const rules = await getTelegramAlertRules(userId);
+    const newsSettings = await getNewsAiSettings(userId);
     const persistedOutcomes = await getSignalOutcomes(userId, 200);
     const analyses = await analyzeAllMarkets();
 
@@ -56,8 +60,12 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
         if (shouldAlert) {
             const calibrated = calibrateConfidence(a.indicators.confidence, persistedOutcomes.map(row => ({ direction: a.indicators.label, signalCandleOpenTime: row.signalCandleOpenTime, result: row.outcome, exitCandleOpenTime: row.exitCandleOpenTime ?? undefined, exitPrice: row.exitPrice ?? undefined, returnPercent: row.returnPercent, candlesObserved: row.candlesObserved, reason: row.reason ?? "" })));
             const calibratedAnalysis = { ...a, indicators: { ...a.indicators, confidence: calibrated.confidence } };
-            const news = a.interval === "1h" ? await fetchRelevantNews(a.symbol) : [];
-            const aiAnalysis = await generateSignalAiAnalysis(calibratedAnalysis, news);
+            const configuredIntervals = newsSettings ? (JSON.parse(newsSettings.aiIntervals) as string[]) : ["1h"];
+            const aiEnabled = newsSettings?.enabled !== 0 && configuredIntervals.includes(a.interval);
+            const news = aiEnabled && a.interval === "1h" ? await fetchRelevantNews(a.symbol, Date.now(), { sources: JSON.parse(newsSettings?.rssSources ?? "[]") as string[], lookbackHours: newsSettings?.newsLookbackHours ?? 6 }) : [];
+            for (const item of news) await saveNewsItem(userId, { symbol: a.symbol, source: item.source, url: item.url, title: item.title, summary: item.summary, publishedAt: item.publishedAt });
+            const aiAnalysis = aiEnabled ? await generateSignalAiAnalysis(calibratedAnalysis, news) : "Phân tích AI đã tắt trong cài đặt người dùng; tín hiệu kỹ thuật vẫn được lưu.";
+            await saveAiAnalysis(userId, { symbol: a.symbol, interval: a.interval, analysis: aiAnalysis });
             currentDelivery = await createTelegramDeliveryLog({ userId, taskUid, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt, label: a.indicators.label, score: a.indicators.score, message: formatSignalAlert(calibratedAnalysis, aiAnalysis, news) });
         } else {
           await markProcessedCandle({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });

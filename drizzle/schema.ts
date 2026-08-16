@@ -84,6 +84,40 @@ export const signalOutcomes = mysqlTable("signal_outcomes", {
   evaluatedAt: timestamp("evaluatedAt").defaultNow().notNull(),
 }, table => ({ outcomeUnique: uniqueIndex("signal_outcomes_snapshot_unique").on(table.userId, table.snapshotId), lookupIndex: index("signal_outcomes_lookup_idx").on(table.userId, table.exchange, table.symbol, table.interval, table.evaluatedAt) }));
 
+export const newsAiSettings = mysqlTable("news_ai_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  rssSources: text("rssSources").notNull(),
+  newsLookbackHours: int("newsLookbackHours").default(6).notNull(),
+  aiIntervals: text("aiIntervals").notNull(),
+  enabled: int("enabled").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({ settingsUserUnique: uniqueIndex("news_ai_settings_user_unique").on(table.userId) }));
+
+export const newsItems = mysqlTable("news_items", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  symbol: varchar("symbol", { length: 20 }).notNull(),
+  source: varchar("source", { length: 120 }).notNull(),
+  url: varchar("url", { length: 1000 }).notNull(),
+  title: text("title").notNull(),
+  summary: text("summary"),
+  publishedAt: double("publishedAt").notNull(),
+  collectedAt: timestamp("collectedAt").defaultNow().notNull(),
+}, table => ({ newsLookup: index("news_items_lookup_idx").on(table.userId, table.symbol, table.publishedAt) }));
+
+export const aiAnalyses = mysqlTable("ai_analyses", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  snapshotId: int("snapshotId"),
+  symbol: varchar("symbol", { length: 20 }).notNull(),
+  interval: varchar("interval", { length: 10 }).notNull(),
+  analysis: text("analysis").notNull(),
+  newsItemIds: text("newsItemIds"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({ aiLookup: index("ai_analyses_lookup_idx").on(table.userId, table.symbol, table.interval, table.createdAt) }));
+
 export const heartbeatRuns = mysqlTable("heartbeat_runs", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -124,3 +158,6 @@ export type SignalSnapshot = typeof signalSnapshots.$inferSelect;
 export type TelegramDeliveryLog = typeof telegramDeliveryLogs.$inferSelect;
 export type HeartbeatRun = typeof heartbeatRuns.$inferSelect;
 export type SignalOutcome = typeof signalOutcomes.$inferSelect;
+export type NewsAiSetting = typeof newsAiSettings.$inferSelect;
+export type NewsItem = typeof newsItems.$inferSelect;
+export type AiAnalysis = typeof aiAnalyses.$inferSelect;

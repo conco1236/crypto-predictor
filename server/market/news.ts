@@ -26,13 +26,14 @@ export function parseRssItems(xml: string, source: string, now = Date.now(), max
   }).filter(item => item.title && item.url && now - item.publishedAt >= 0 && now - item.publishedAt <= maxAgeMs);
 }
 
-export async function fetchRelevantNews(symbol: "BTCUSDT" | "ETHUSDT", now = Date.now()): Promise<NewsItem[]> {
+export async function fetchRelevantNews(symbol: "BTCUSDT" | "ETHUSDT", now = Date.now(), config?: { sources?: string[]; lookbackHours?: number }): Promise<NewsItem[]> {
   const terms = symbol === "BTCUSDT" ? ["bitcoin", "btc"] : ["ethereum", "eth"];
-  const results = await Promise.all(FEEDS.map(async feed => {
+  const allowedSources = config?.sources?.length ? config.sources.map(url => { const known = FEEDS.find(feed => feed.url === url); if (known) return known; try { return { source: new URL(url).hostname.replace(/^www\\./, ""), url }; } catch { return null; } }).filter((feed): feed is { source: string; url: string } => Boolean(feed)) : FEEDS;
+  const results = await Promise.all(allowedSources.map(async feed => {
     try {
       const response = await fetch(feed.url, { signal: timeoutSignal(3500), headers: { accept: "application/rss+xml, application/xml, text/xml" } });
       if (!response.ok) return [];
-      return parseRssItems(await response.text(), feed.source, now).filter(item => terms.some(term => `${item.title} ${item.summary ?? ""}`.toLowerCase().includes(term)));
+      return parseRssItems(await response.text(), feed.source, now, (config?.lookbackHours ?? 6) * 60 * 60 * 1000).filter(item => terms.some(term => `${item.title} ${item.summary ?? ""}`.toLowerCase().includes(term)));
     } catch (error) {
       console.warn(`[News] ${feed.source} unavailable`, error instanceof Error ? error.message : String(error));
       return [];

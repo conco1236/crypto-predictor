@@ -57,3 +57,7 @@ The 1h candle-close path now fetches recent BTC/ETH context from public RSS feed
 News fetch failures, stale feeds and empty matches do not block the technical signal: the AI prompt explicitly states that no news is available and must not infer events, while the existing AI fallback still produces a technical-only explanation. New 1h deliveries persist the final message, so retries do not call RSS or AI again. The existing Heartbeat candle-close, processed-candle guard, delivery log and retry/idempotency path remain active.
 
 Final verification: TypeScript clean, 69/69 Vitest tests passing across 18 files, production build successful, and browser console had no matching React key/runtime warning. RSS sources were selected after verifying the published feed documentation from CoinDesk and Crypto Briefing.
+
+## News settings and history upgrade
+
+Migration `0007_pretty_cargill.sql` tạo `news_ai_settings`, `news_items` và `ai_analyses` cùng index tra cứu; đã áp dụng production, không destructive. News Center hỗ trợ cấu hình nhiều RSS URL, lookback 1–48 giờ, các interval AI và bật/tắt news context; custom RSS URL được adapter sử dụng thật. Heartbeat/manual persist đọc cấu hình theo user, lưu news items và AI analysis history; retry vẫn dùng delivery message đã persist. Dashboard có route `?page=news`, history theo coin và AI history 1h; Home có search/filter signal history theo symbol/interval. Verification: TypeScript đạt, 69/69 tests đạt, production build đạt; preview desktop 1280 và mobile 375 không ghi nhận lỗi layout trong vùng đã kiểm tra.
