@@ -382,3 +382,11 @@
 - [x] Thêm bộ lọc lịch sử P&L theo ngày bắt đầu/kết thúc và BTC/ETH
 - [x] Thêm export CSV cho dữ liệu P&L đã lọc, escape dữ liệu an toàn
 - [x] Viết tests data transformation/export, kiểm thử responsive và tạo checkpoint
+
+## User request: P&L image/PDF export, scenario management, Pro-ready and GitHub sync
+
+- [x] Thêm nút xuất vùng biểu đồ P&L thành PNG và tài liệu PDF
+- [x] Bổ sung lưu, đổi tên, xóa và chọn nhiều scenario dry-run
+- [x] Thêm bảng so sánh kết quả dry-run scenario và không lưu secrets
+- [x] Kiểm thử export, scenario persistence, responsive/runtime và Pro-ready release checks
+- [x] Commit và push code mới lên repository GitHub đã cấu hình
