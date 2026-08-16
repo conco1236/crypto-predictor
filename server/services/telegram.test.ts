@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formatSignalAlert, sendTelegramMessage } from "./telegram";
+import { buildSignalInlineKeyboard, formatSignalAlert, sendTelegramMessage } from "./telegram";
 import type { MarketAnalysis } from "../market/binance";
 
 const sample = {
+  exchange: "Binance",
   symbol: "BTCUSDT",
   interval: "1h",
   price: 65000,
@@ -25,6 +26,13 @@ describe("telegram alerts", () => {
     expect(message).toContain("không phải khuyến nghị đầu tư");
   });
 
+  it("builds safe inline URLs for chart and liquidity checks", () => {
+    const keyboard = buildSignalInlineKeyboard(sample);
+    expect(keyboard.inline_keyboard[0][0].url).toContain("tradingview.com");
+    expect(keyboard.inline_keyboard[0][1].url).toContain("focus=liquidity");
+    expect(keyboard.inline_keyboard[0][1].url).not.toContain("token");
+  });
+
   it("includes the AI analysis section when generated for a candle-close alert", () => {
     const message = formatSignalAlert(sample, "Xu hướng tăng được xác nhận; vô hiệu hóa nếu thủng SL.");
     expect(message).toContain("Phân tích AI");
@@ -37,7 +45,9 @@ describe("telegram alerts", () => {
   });
 
   it("returns Telegram message id on successful delivery", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ok: true, result: { message_id: 42 } }) }));
-    await expect(sendTelegramMessage("token", "chat", "hello")).resolves.toMatchObject({ ok: true, result: { message_id: 42 } });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ ok: true, result: { message_id: 42 } }) });
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(sendTelegramMessage("token", "chat", "hello", { inline_keyboard: [[{ text: "Chart", url: "https://example.com" }]] })).resolves.toMatchObject({ ok: true, result: { message_id: 42 } });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body as string).reply_markup.inline_keyboard[0][0].url).toBe("https://example.com");
   });
 });

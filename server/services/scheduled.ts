@@ -15,7 +15,7 @@ import {
 } from "../db";
 import { analyzeAllMarkets } from "../market/binance";
 import { calibrateConfidence } from "../market/outcomes";
-import { formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./telegram";
+import { buildSignalInlineKeyboard, formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./telegram";
 import { resolveAlertRule } from "./alertRules";
 
 export async function refreshSignalsHandler(req: Request, res: Response) {
@@ -71,7 +71,7 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
       const attempts = currentDelivery.attempts + 1;
       await updateTelegramDeliveryLog(currentDelivery.id, { status: "pending", attempts, lastError: null });
       try {
-        const result = await sendTelegramMessage(alertSettings.botToken, alertSettings.chatId, currentDelivery.message ?? formatSignalAlert({ ...a, indicators: { ...a.indicators, confidence: calibrateConfidence(a.indicators.confidence, persistedOutcomes.map(row => ({ direction: a.indicators.label, signalCandleOpenTime: row.signalCandleOpenTime, result: row.outcome, exitCandleOpenTime: row.exitCandleOpenTime ?? undefined, exitPrice: row.exitPrice ?? undefined, returnPercent: row.returnPercent, candlesObserved: row.candlesObserved, reason: row.reason ?? "" }))).confidence } }, "AI không khả dụng cho delivery cũ; dùng nội dung kỹ thuật đã lưu."));
+        const result = await sendTelegramMessage(alertSettings.botToken, alertSettings.chatId, currentDelivery.message ?? formatSignalAlert({ ...a, indicators: { ...a.indicators, confidence: calibrateConfidence(a.indicators.confidence, persistedOutcomes.map(row => ({ direction: a.indicators.label, signalCandleOpenTime: row.signalCandleOpenTime, result: row.outcome, exitCandleOpenTime: row.exitCandleOpenTime ?? undefined, exitPrice: row.exitPrice ?? undefined, returnPercent: row.returnPercent, candlesObserved: row.candlesObserved, reason: row.reason ?? "" }))).confidence } }, "AI không khả dụng cho delivery cũ; dùng nội dung kỹ thuật đã lưu."), buildSignalInlineKeyboard(a));
         await updateTelegramDeliveryLog(currentDelivery.id, { status: "sent", telegramMessageId: result.result?.message_id ? String(result.result.message_id) : null, lastError: null, sentAt: new Date() });
         await markProcessedCandle({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
         alerts++;

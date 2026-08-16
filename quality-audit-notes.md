@@ -39,3 +39,13 @@ Before delivery, the market adapter fetches real orderbook data once per exchang
 The new `pnpm backtest` command performs walk-forward evaluation from real exchange candles, uses only candles before each signal for indicators, evaluates future candles for TP/SL, and groups results by exchange, asset and interval. A real run with 120 candles and an 8-candle forward window produced `backtest-results.json`; the output includes total signals, resolved count, hit rate, expectancy and max drawdown. These figures are diagnostic samples, not guarantees and should not be interpreted as investment performance.
 
 Final verification for this upgrade: TypeScript clean, 64/64 Vitest tests passing, 16 targeted tests passing for multi-timeframe/liquidity/scheduled paths, production build successful, dashboard preview rendered, and browser console had no matching key/runtime warning.
+
+## Telegram inline keyboard, Backtest UI and No Trade decision trace
+
+Telegram alerts now include URL-based inline keyboard buttons for a TradingView chart and the dashboard liquidity view. The buttons contain only exchange/symbol/interval query parameters; bot tokens and callback secrets are never placed in message markup. Manual sends and Heartbeat retries both rebuild the same safe keyboard.
+
+A protected `?page=backtest` dashboard page now provides exchange, asset and timeframe filters, summary metrics, a hit-rate/expectancy chart, a detailed breakdown table and a methodology disclaimer. The outcomeMetrics backend was changed to evaluate groups in parallel; the observed request duration fell to approximately 3.65 seconds in the preview log instead of approximately 25.4 seconds before optimization.
+
+SignalCards now show a No Trade decision trace containing the status reason, aligned and conflicting timeframes, technical confidence reasons and liquidity warnings. The aggregate AI summary also receives signal status, reason and liquidity warnings so its Vietnamese explanation does not omit the decision context.
+
+Final verification for this feature set: TypeScript clean, 67/67 Vitest tests passing, production build successful, Backtest preview rendered with filters, and browser console contained no matching React key/runtime warning.

@@ -9,7 +9,7 @@ import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { analyzeAllMarkets, fetchExchangeCandles, type ExchangeName, type IntervalName, type SymbolName } from "./market/binance";
 import { calibrateConfidence, evaluateSignalOutcome, summarizeOutcomes } from "./market/outcomes";
 import { createTelegramDeliveryLog, deleteTelegramAlertRule, getHeartbeatHistory, getHeartbeatHistoryPage, getLastSignal, getProcessedCandle, getRiskHistories, getRiskHistory, getSignalHistory, getTelegramAlertRules, getTelegramDeliveryHistory, getTelegramDeliveryHistoryPage, getTelegramDeliveryLog, getTelegramDeliveryLogById, getTelegramSettings, getSignalOutcomes, markProcessedCandle, saveSignalSnapshot, saveTelegramSettings, updateTelegramDeliveryLog, upsertSignalOutcome, upsertTelegramAlertRule } from "./db";
-import { formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./services/telegram";
+import { buildSignalInlineKeyboard, formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./services/telegram";
 import { resolveAlertRule } from "./services/alertRules";
 
 function responseText(response: Awaited<ReturnType<typeof invokeLLM>>) {
@@ -19,7 +19,7 @@ function responseText(response: Awaited<ReturnType<typeof invokeLLM>>) {
 
 const analysisInput = z.array(z.object({
   exchange: z.string(), symbol: z.string(), interval: z.string(), price: z.number(), label: z.string(), score: z.number(),
-  rsi: z.number(), adx: z.number(), atr: z.number(), volumeRatio: z.number(), entry: z.number(), takeProfit1: z.number(), stopLoss: z.number(), reasons: z.array(z.string()),
+  rsi: z.number(), adx: z.number(), atr: z.number(), volumeRatio: z.number(), entry: z.number(), takeProfit1: z.number(), stopLoss: z.number(), reasons: z.array(z.string()), signalStatus: z.string().optional(), signalReason: z.string().optional(), liquidityWarnings: z.array(z.string()).optional(),
 }));
 
 export const appRouter = router({
@@ -35,7 +35,7 @@ export const appRouter = router({
   market: router({
     all: protectedProcedure.query(async () => analyzeAllMarkets()),
     aiSummary: protectedProcedure.input(analysisInput).mutation(async ({ input }) => {
-      const compact = input.map(item => `${item.exchange} — ${item.symbol} ${item.interval}: ${item.label} score ${item.score}, giá ${item.price}, RSI ${item.rsi.toFixed(1)}, ADX ${item.adx.toFixed(1)}, ATR ${item.atr.toFixed(2)}, volume x${item.volumeRatio.toFixed(2)}, Entry ${item.entry.toFixed(2)}, TP ${item.takeProfit1.toFixed(2)}, SL ${item.stopLoss.toFixed(2)}; ${item.reasons.join(", ")}`).join("\n");
+      const compact = input.map(item => `${item.exchange} — ${item.symbol} ${item.interval}: ${item.label} score ${item.score}, trạng thái ${item.signalStatus ?? "Trade"}, lý do ${item.signalReason ?? "không có"}, giá ${item.price}, RSI ${item.rsi.toFixed(1)}, ADX ${item.adx.toFixed(1)}, ATR ${item.atr.toFixed(2)}, volume x${item.volumeRatio.toFixed(2)}, Entry ${item.entry.toFixed(2)}, TP ${item.takeProfit1.toFixed(2)}, SL ${item.stopLoss.toFixed(2)}, liquidity ${item.liquidityWarnings?.join("; ") || "đạt"}; ${item.reasons.join(", ")}`).join("\n");
       const result = await invokeLLM({
         messages: [
           { role: "system", content: "Bạn là chuyên gia phân tích thị trường crypto. Hãy trả lời hoàn toàn bằng tiếng Việt, ngắn gọn nhưng sâu sắc. Chỉ sử dụng dữ liệu được cung cấp, không bịa thêm giá hoặc tin tức. Nêu rõ xu hướng chính, sự đồng thuận đa khung, rủi ro và điều kiện vô hiệu hóa. Đây là thông tin tham khảo, không phải khuyến nghị đầu tư." },
@@ -72,7 +72,7 @@ export const appRouter = router({
         const attempts = delivery?.attempts ?? 0;
         await updateTelegramDeliveryLog(delivery!.id, { status: "pending", attempts: attempts + 1, lastError: null });
         try {
-          const result = await sendTelegramMessage(alertSettings!.botToken, alertSettings!.chatId, message);
+          const result = await sendTelegramMessage(alertSettings!.botToken, alertSettings!.chatId, message, buildSignalInlineKeyboard(a));
           await updateTelegramDeliveryLog(delivery!.id, { status: "sent", telegramMessageId: result.result?.message_id ? String(result.result.message_id) : null, lastError: null, sentAt: new Date() });
           await markProcessedCandle({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
           alerts++;
@@ -94,16 +94,16 @@ export const appRouter = router({
         const groupKey = `${row.exchange}:${row.symbol}:${row.interval}`;
         groups.set(groupKey, [...(groups.get(groupKey) ?? []), row]);
       }
-      const outcomes = [];
-      for (const rows of Array.from(groups.values())) {
+      const outcomeGroups = await Promise.all(Array.from(groups.values()).map(async rows => {
         const first = rows[0];
         const candles = await fetchExchangeCandles(first.exchange as ExchangeName, first.symbol as SymbolName, first.interval as IntervalName, 300).catch(() => []);
-        for (const row of rows) {
+        return Promise.all(rows.map(async row => {
           const outcome = evaluateSignalOutcome({ direction: row.label, entry: row.entry, takeProfit: row.takeProfit1, stopLoss: row.stopLoss, signalCandleOpenTime: (() => { try { return Number((JSON.parse(row.indicators) as { candleOpenTime?: number }).candleOpenTime ?? row.createdAt.getTime()); } catch { return row.createdAt.getTime(); } })() }, candles);
           await upsertSignalOutcome({ userId: ctx.user.id, snapshotId: row.id, exchange: row.exchange, symbol: row.symbol, interval: row.interval, outcome: outcome.result, signalCandleOpenTime: outcome.signalCandleOpenTime, exitCandleOpenTime: outcome.exitCandleOpenTime, exitPrice: outcome.exitPrice, returnPercent: outcome.returnPercent, candlesObserved: outcome.candlesObserved, reason: outcome.reason });
-          outcomes.push({ ...outcome, id: row.id, exchange: row.exchange, symbol: row.symbol, interval: row.interval, createdAt: row.createdAt });
-        }
-      }
+          return { ...outcome, id: row.id, exchange: row.exchange, symbol: row.symbol, interval: row.interval, createdAt: row.createdAt };
+        }));
+      }));
+      const outcomes = outcomeGroups.flat();
       const baseConfidences = filtered.map(row => { try { return Number((JSON.parse(row.indicators) as { confidence?: number }).confidence ?? 50); } catch { return 50; } }).filter(Number.isFinite);
       const baseConfidence = baseConfidences.length ? baseConfidences.reduce((sum, value) => sum + value, 0) / baseConfidences.length : 50;
       const breakdown: Record<string, ReturnType<typeof summarizeOutcomes>> = {};

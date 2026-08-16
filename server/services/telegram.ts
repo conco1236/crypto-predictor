@@ -2,12 +2,21 @@ import type { MarketAnalysis } from "../market/binance";
 import { invokeLLM } from "../_core/llm";
 
 export type TelegramSendResult = { ok: boolean; result?: { message_id?: number }; description?: string; error_code?: number };
+export type TelegramInlineKeyboard = { inline_keyboard: Array<Array<{ text: string; url: string }>> };
 
-export async function sendTelegramMessage(botToken: string, chatId: string, text: string): Promise<TelegramSendResult> {
+export function buildSignalInlineKeyboard(analysis: MarketAnalysis): TelegramInlineKeyboard {
+  const chartSymbol = `${analysis.exchange.toUpperCase()}:${analysis.symbol}`;
+  const chartUrl = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(chartSymbol)}`;
+  const appUrl = process.env.PUBLIC_APP_URL ?? "https://cryptosig-2awoct8z.manus.space";
+  const liquidityUrl = `${appUrl}/?focus=liquidity&exchange=${encodeURIComponent(analysis.exchange)}&symbol=${encodeURIComponent(analysis.symbol)}&interval=${encodeURIComponent(analysis.interval)}`;
+  return { inline_keyboard: [[{ text: "Xem biểu đồ", url: chartUrl }, { text: "Kiểm tra thanh khoản", url: liquidityUrl }]] };
+}
+
+export async function sendTelegramMessage(botToken: string, chatId: string, text: string, replyMarkup?: TelegramInlineKeyboard): Promise<TelegramSendResult> {
   const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML", disable_web_page_preview: true }),
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML", disable_web_page_preview: true, ...(replyMarkup ? { reply_markup: replyMarkup } : {}) }),
   });
   const payload = await response.json().catch(() => null) as TelegramSendResult | null;
   if (!response.ok || payload?.ok === false) {
@@ -24,7 +33,7 @@ export async function generateSignalAiAnalysis(analysis: MarketAnalysis) {
     const response = await invokeLLM({
       messages: [
         { role: "system", content: "Bạn là chuyên gia phân tích crypto. Trả lời hoàn toàn bằng tiếng Việt, tối đa 3 câu, chỉ dùng dữ liệu được cung cấp. Nêu xu hướng, điều kiện xác nhận/vô hiệu hóa và rủi ro. Không bịa tin tức, không hứa hẹn lợi nhuận và nhắc đây không phải khuyến nghị đầu tư." },
-        { role: "user", content: `Phân tích tín hiệu ${analysis.symbol} ${analysis.interval} trên ${analysis.exchange}. Xu hướng ${i.label}, điểm ${i.score}/100, confidence ${i.confidence}/100, RSI ${i.rsi.toFixed(1)}, ADX ${i.adx.toFixed(1)}, ATR ${i.atr.toFixed(2)}, volume x${i.volumeRatio.toFixed(2)}, Entry ${l.entry.toFixed(2)}, TP1 ${l.takeProfit1.toFixed(2)}, SL ${l.stopLoss.toFixed(2)}. Lý do: ${(i.reasons ?? []).slice(0, 4).join("; ")}` },
+        { role: "user", content: `Phân tích tín hiệu ${analysis.symbol} ${analysis.interval} trên ${analysis.exchange}. Xu hướng ${i.label}, trạng thái ${analysis.signalStatus ?? "Trade"}, lý do trạng thái ${analysis.signalReason ?? "không có"}, đồng thuận khung ${(analysis.timeframeConfirmation?.alignedIntervals ?? []).join(", ") || "không có"}, xung đột khung ${(analysis.timeframeConfirmation?.conflictingIntervals ?? []).join(", ") || "không có"}, điểm ${i.score}/100, confidence ${i.confidence}/100, RSI ${i.rsi.toFixed(1)}, ADX ${i.adx.toFixed(1)}, ATR ${i.atr.toFixed(2)}, volume x${i.volumeRatio.toFixed(2)}, liquidity ${analysis.liquidity?.isValid ? "đạt" : "không đạt"}, liquidity warnings ${(analysis.liquidity?.warnings ?? []).join("; ") || "không có"}, Entry ${l.entry.toFixed(2)}, TP1 ${l.takeProfit1.toFixed(2)}, SL ${l.stopLoss.toFixed(2)}. Lý do kỹ thuật: ${(i.reasons ?? []).slice(0, 4).join("; ")}` },
       ],
       reasoning: { effort: "low" },
     });

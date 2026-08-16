@@ -180,3 +180,7 @@
 - [x] Hiển thị lý do No Trade, trạng thái volume/liquidity và metadata xác thực trên dashboard/Telegram
 - [x] Viết script backtest dùng nến thật, xuất hit rate/expectancy/max drawdown theo asset/exchange/interval
 - [x] Bổ sung test, build, audit và checkpoint cho gói nâng cấp multi-timeframe/liquidity/backtest
+- [x] Thêm inline keyboard Telegram cho xem biểu đồ và kiểm tra thanh khoản, không đưa secrets vào callback data
+- [x] Xây trang Backtest với filter asset/sàn/timeframe, biểu đồ và bảng thống kê chi tiết
+- [x] Hiển thị decision trace và lý do AI/engine đưa tín hiệu về No Trade trên dashboard
+- [x] Bổ sung test, responsive verification, audit và checkpoint cho gói nâng cấp này
