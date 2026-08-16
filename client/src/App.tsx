@@ -8,7 +8,7 @@ import NewsCenter from "./pages/NewsCenter";
 
 function App() {
   const page = new URLSearchParams(window.location.search).get("page");
-  return <ErrorBoundary><ThemeProvider defaultTheme="dark"><TooltipProvider><Toaster />{page === "backtest" ? <Backtest /> : page === "news" ? <NewsCenter /> : <Home />}</TooltipProvider></ThemeProvider></ErrorBoundary>;
+  return <ErrorBoundary><ThemeProvider defaultTheme="dark" switchable><TooltipProvider><Toaster />{page === "backtest" ? <Backtest /> : page === "news" ? <NewsCenter /> : <Home />}</TooltipProvider></ThemeProvider></ErrorBoundary>;
 }
 
 export default App;

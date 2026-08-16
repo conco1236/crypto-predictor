@@ -137,10 +137,11 @@ export const appRouter = router({
       const breakdown: Record<string, ReturnType<typeof summarizeOutcomes>> = {};
       for (const outcome of outcomes) {
         const key = `${outcome.exchange}:${outcome.symbol}:${outcome.interval}`;
-        breakdown[key] = summarizeOutcomes([...(breakdown[key] ? [] : []), ...outcomes.filter(item => `${item.exchange}:${item.symbol}:${item.interval}` === key)]);
+        const bucket = outcomes.filter(item => `${item.exchange}:${item.symbol}:${item.interval}` === key);
+        breakdown[key] = summarizeOutcomes(bucket);
       }
       const persisted = await getSignalOutcomes(ctx.user.id, input?.limit ?? 20);
-      return { summary: summarizeOutcomes(outcomes), breakdown, calibration: calibrateConfidence(baseConfidence, outcomes), outcomes, persistedCount: persisted.length, evaluatedAt: Date.now(), note: "Outcome được lưu theo snapshot. Snapshot ngoài cửa sổ nến fetch sẽ là invalid; cùng nến chạm TP/SL dùng giả định SL trước." };
+      return { summary: summarizeOutcomes(outcomes), breakdown, calibration: calibrateConfidence(baseConfidence, outcomes), outcomes, persistedCount: persisted.length, evaluatedAt: Date.now(), note: "Backtest dùng nến thật theo cửa sổ walk-forward. Khi TP/SL chưa chạm, P&L cuối horizon được hiển thị riêng và không được tính vào hit rate." };
     }),
   }),
   news: router({

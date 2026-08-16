@@ -148,14 +148,19 @@ export function analyzeCandles(candles: Candle[]): IndicatorSnapshot {
   if (m.histogram > 0) { score += 12; reasons.push("MACD histogram dương"); } else { score -= 12; reasons.push("MACD histogram âm"); }
   if (closes.at(-1)! > b.middle) score += 8; else score -= 8;
   if (adxValue >= 20) { score += closes.at(-1)! >= e21 ? 10 : -10; reasons.push(`ADX ${adxValue.toFixed(1)} cho thấy xu hướng có lực`); }
+  const recentTrend = closes.slice(-5).filter((close, index, values) => index === 0 || (close >= values[index - 1] && close >= e21)).length;
+  const recentBearTrend = closes.slice(-5).filter((close, index, values) => index === 0 || (close <= values[index - 1] && close <= e21)).length;
+  if (recentTrend >= 4) { score += 8; reasons.push(`${recentTrend}/5 nến gần nhất duy trì cấu trúc tăng`); }
+  else if (recentBearTrend >= 4) { score -= 8; reasons.push(`${recentBearTrend}/5 nến gần nhất duy trì cấu trúc giảm`); }
   if (volumeRatio >= 1.2) reasons.push(`Khối lượng cao hơn trung bình ${((volumeRatio - 1) * 100).toFixed(0)}%`);
   score = clamp(Math.round(score), -100, 100);
   const label: TrendLabel = score >= 25 ? "Bullish" : score <= -25 ? "Bearish" : "Neutral";
   const confidenceReasons: string[] = [];
-  const confirmations = [e9 > e21, e21 > e50, closes.at(-1)! > e50, m.histogram > 0, closes.at(-1)! > b.middle, adxValue >= 20, volumeRatio >= 1].filter(Boolean).length;
-  if (confirmations >= 5) confidenceReasons.push(`${confirmations}/7 điều kiện kỹ thuật đồng thuận`);
-  else if (confirmations >= 3) confidenceReasons.push(`${confirmations}/7 điều kiện kỹ thuật xác nhận`);
-  else confidenceReasons.push(`Chỉ ${confirmations}/7 điều kiện kỹ thuật xác nhận`);
+  const bearish = score < 0;
+  const confirmations = [bearish ? e9 < e21 : e9 > e21, bearish ? e21 < e50 : e21 > e50, bearish ? closes.at(-1)! < e50 : closes.at(-1)! > e50, bearish ? m.histogram < 0 : m.histogram > 0, bearish ? closes.at(-1)! < b.middle : closes.at(-1)! > b.middle, adxValue >= 20, volumeRatio >= 1].filter(Boolean).length;
+  if (confirmations >= 5) confidenceReasons.push(`${confirmations}/7 điều kiện kỹ thuật đồng thuận theo hướng ${bearish ? "giảm" : "tăng"}`);
+  else if (confirmations >= 3) confidenceReasons.push(`${confirmations}/7 điều kiện kỹ thuật xác nhận theo hướng ${bearish ? "giảm" : "tăng"}`);
+  else confidenceReasons.push(`Chỉ ${confirmations}/7 điều kiện kỹ thuật xác nhận theo hướng ${bearish ? "giảm" : "tăng"}`);
   if (adxValue >= 25) confidenceReasons.push(`ADX ${adxValue.toFixed(1)} hỗ trợ xu hướng`);
   else confidenceReasons.push(`ADX ${adxValue.toFixed(1)} chưa xác nhận mạnh`);
   if (volumeRatio >= 1.2) confidenceReasons.push("Khối lượng hỗ trợ tín hiệu");

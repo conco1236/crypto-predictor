@@ -203,3 +203,13 @@
 - [x] Thêm công tắc Telegram `Gửi mọi nến` hoặc `Chỉ tín hiệu mạnh`, lưu theo user
 - [x] Áp dụng chế độ gửi nhất quán cho Heartbeat và manual persist, giữ idempotency/retry
 - [x] Bổ sung test UI/API/alert conditions, audit, build và checkpoint
+
+## User request: Backtest, signal accuracy and visual refresh — completed
+
+- [x] Điều tra nguyên nhân Backtest chỉ có pending/expired và thiếu metric hữu ích
+- [x] Bổ sung P&L cuối horizon từ nến thật, tách khỏi hit rate/expectancy
+- [x] Cải thiện scoring đối xứng Bullish/Bearish và xác nhận cấu trúc 5 nến look-ahead safe
+- [x] Tinh gọn Backtest, Home và News Center bằng semantic theme tokens
+- [x] Bật Light/Dark mode toàn cục, lưu lựa chọn localStorage và thêm nút chuyển theme
+- [x] Chạy 18 test files / 71 tests, TypeScript, production build và mobile preview
+- [x] Cập nhật quality audit và chuẩn bị checkpoint handover

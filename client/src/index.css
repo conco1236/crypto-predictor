@@ -25,6 +25,29 @@
 }
 
 :root {
+  --background: oklch(0.98 0.008 245);
+  --foreground: oklch(0.18 0.025 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.025 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.025 250);
+  --primary: oklch(0.52 0.14 192);
+  --primary-foreground: oklch(0.98 0.01 240);
+  --secondary: oklch(0.94 0.018 245);
+  --secondary-foreground: oklch(0.28 0.03 250);
+  --muted: oklch(0.94 0.018 245);
+  --muted-foreground: oklch(0.48 0.025 245);
+  --accent: oklch(0.92 0.04 205);
+  --accent-foreground: oklch(0.22 0.03 250);
+  --destructive: oklch(0.58 0.2 25);
+  --destructive-foreground: oklch(0.98 0.01 240);
+  --border: oklch(0.86 0.02 245);
+  --input: oklch(0.86 0.02 245);
+  --ring: oklch(0.52 0.14 192);
+  --radius: 0.75rem;
+}
+
+.dark {
   --background: oklch(0.12 0.025 255);
   --foreground: oklch(0.96 0.01 240);
   --card: oklch(0.16 0.025 255);
@@ -44,15 +67,15 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 12%);
   --ring: oklch(0.82 0.12 190);
-  --radius: 0.75rem;
 }
 
 * { @apply border-border outline-ring/50; }
-html { background: #070b13; }
+html { background: var(--background); color-scheme: light; }
+html.dark { color-scheme: dark; }
 body { @apply bg-background text-foreground; margin: 0; font-family: 'DM Sans', sans-serif; }
 h1, h2, h3, h4, .font-display { font-family: 'Space Grotesk', sans-serif; }
 button, input { font-family: inherit; }
-::selection { background: rgba(165, 243, 252, 0.25); color: white; }
+::selection { background: color-mix(in oklab, var(--primary) 25%, transparent); color: var(--foreground); }
 .container { width: 100%; margin-inline: auto; padding-inline: 1rem; }
 @media (min-width: 640px) { .container { padding-inline: 1.5rem; } }
 @media (min-width: 1024px) { .container { max-width: 1280px; padding-inline: 2rem; } }

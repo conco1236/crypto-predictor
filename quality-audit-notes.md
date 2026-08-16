@@ -82,3 +82,11 @@ Migration 0009 adds `telegram_settings.sendMode` with enum values `all_candles` 
 `all_candles` sends every newly closed 15m/1h/4h/1d candle. `strong_only` requires Trade status, valid liquidity and absolute score at least the configured threshold. Both modes retain processed-candle idempotency, delivery retry and mark-after-success semantics; skipped strong-only candles are saved and marked processed to avoid repeat evaluation.
 
 Verification: schema migration applied successfully, TypeScript clean, targeted Telegram/Heartbeat tests passed, full regression suite and production build passed, and desktop dashboard preview remained intact.
+
+## Backtest and visual refresh — 2026-08-16
+
+Nguyên nhân Backtest thiếu số liệu hữu ích là pipeline đánh giá snapshot chỉ dùng một cửa sổ nến hiện tại dùng chung cho từng nhóm. Snapshot cũ có thể bị invalid hoặc expired, trong khi UI không hiển thị P&L mark-to-market. Evaluator hiện trả thêm `horizonReturnPercent` từ nến thật cuối cửa sổ quan sát. Hit rate và expectancy vẫn chỉ tính TP/SL đã giải quyết; P&L horizon được hiển thị riêng, không bị trình bày như tỷ lệ thắng.
+
+Bộ scoring kỹ thuật được điều chỉnh theo hướng đối xứng cho Bearish và bổ sung xác nhận cấu trúc 5 nến gần nhất nhằm giảm nhiễu một nến. Logic vẫn look-ahead safe vì chỉ dùng cửa sổ phân tích đã đóng. Không tạo dữ liệu giả hoặc fabricated outcomes.
+
+Backtest được tinh gọn với các metric resolved/expired/horizon, bảng chi tiết và semantic tokens. Theme switching được bật toàn cục, lưu lựa chọn bằng localStorage; Home, Backtest và News Center có nút Light/Dark. Kiểm thử cuối: TypeScript clean, 18 test files / 71 tests passed, production build passed, mobile preview rendered, browser console không có lỗi/warning tương ứng. Build vẫn còn cảnh báo chunk frontend lớn từ bundle Mermaid/editor hiện hữu, không phải lỗi biên dịch.

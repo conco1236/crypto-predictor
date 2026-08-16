@@ -23,6 +23,7 @@ export type SignalOutcome = {
   exitCandleOpenTime?: number;
   exitPrice?: number;
   returnPercent: number;
+  horizonReturnPercent?: number;
   candlesObserved: number;
   reason: string;
 };
@@ -56,7 +57,11 @@ export function evaluateSignalOutcome(input: SignalOutcomeInput, candles: Outcom
       return { ...base, result, exitCandleOpenTime: candle.openTime, exitPrice, returnPercent, candlesObserved: index + 1, reason: touchedStop && touchedTarget ? "Cùng một nến chạm TP và SL; áp dụng giả định bảo thủ SL trước" : hitStop ? "Giá chạm Stop Loss" : "Giá chạm Take Profit" };
     }
   }
-  return { ...base, result: "expired", returnPercent: 0, candlesObserved: observed.length, reason: observed.length ? "Chưa chạm TP/SL trong cửa sổ đánh giá" : "Chưa có nến tương lai đã đóng" };
+  const lastObserved = observed.at(-1);
+  const horizonReturnPercent = lastObserved && finitePositive(input.entry)
+    ? (bullish ? (lastObserved.close - input.entry) : (input.entry - lastObserved.close)) / input.entry * 100
+    : 0;
+  return { ...base, result: "expired", returnPercent: 0, horizonReturnPercent, candlesObserved: observed.length, reason: observed.length ? "Chưa chạm TP/SL trong cửa sổ đánh giá; dùng P&L tại cuối horizon để tham khảo" : "Chưa có nến tương lai đã đóng" };
 }
 
 export function calibrateConfidence(baseConfidence: number, outcomes: SignalOutcome[]) {
@@ -74,6 +79,7 @@ export function summarizeOutcomes(outcomes: SignalOutcome[]) {
   const wins = resolved.filter(outcome => outcome.result === "take_profit").length;
   const losses = resolved.filter(outcome => outcome.result === "stop_loss").length;
   const totalReturnPercent = resolved.reduce((sum, outcome) => sum + outcome.returnPercent, 0);
+  const horizonReturnPercent = valid.reduce((sum, outcome) => sum + (outcome.result === "expired" ? (outcome.horizonReturnPercent ?? 0) : outcome.returnPercent), 0);
   let equity = 0;
   let peak = 0;
   let maxDrawdownPercent = 0;
@@ -92,6 +98,7 @@ export function summarizeOutcomes(outcomes: SignalOutcome[]) {
     hitRate: resolved.length ? wins / resolved.length : null,
     expectancyPercent: resolved.length ? totalReturnPercent / resolved.length : null,
     totalReturnPercent,
+    horizonReturnPercent,
     maxDrawdownPercent,
   };
 }

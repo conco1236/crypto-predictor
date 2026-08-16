@@ -26,6 +26,7 @@ describe("signal outcome evaluation", () => {
     const outcome = evaluateSignalOutcome({ ...base, maxCandles: 1 }, [{ openTime: 1_000, high: 100, low: 100, close: 100 }, { openTime: 2_000, high: 104, low: 98, close: 101 }, { openTime: 3_000, high: 106, low: 99, close: 105 }]);
     expect(outcome.result).toBe("expired");
     expect(outcome.candlesObserved).toBe(1);
+    expect(outcome.horizonReturnPercent).toBeCloseTo(1);
   });
 
   it("calibrates confidence conservatively from resolved outcomes", () => {
@@ -43,5 +44,6 @@ describe("signal outcome evaluation", () => {
     const summary = summarizeOutcomes(outcomes);
     expect(summary).toMatchObject({ total: 3, resolved: 2, wins: 1, losses: 1, expired: 1, hitRate: 0.5 });
     expect(summary.expectancyPercent).toBeCloseTo(1);
+    expect(summary.horizonReturnPercent).toBeCloseTo(3);
   });
 });
