@@ -258,21 +258,21 @@
 
 ## User request: Trading Bot and chart workflow
 
-- [ ] Chốt phạm vi bot: paper trading hay live trading, CEX API và ví DEX
-- [ ] Tạo trang Trading Bot với cấu hình secrets an toàn, không lưu secret phía client
-- [ ] Dùng phân tích hiện có làm nguồn tín hiệu và hiển thị trạng thái bot rõ ràng
-- [ ] Thêm tooltip OHLC chi tiết theo nến đang hover trên biểu đồ giá
-- [ ] Thêm tải ảnh MACD/RSI từ modal phóng to
-- [ ] Lưu lựa chọn 30/60/120 nến để tự áp dụng lần sau
-- [ ] Viết/cập nhật tests, kiểm tra bảo mật/responsive/runtime và tạo checkpoint
+- [x] Chốt phạm vi bot: live trading có xác nhận; Binance/OKX; DEX EVM/BSC ưu tiên
+- [x] Tạo trang Trading Bot với cấu hình secrets an toàn, không lưu secret phía client
+- [x] Dùng phân tích hiện có làm nguồn tín hiệu và hiển thị trạng thái bot rõ ràng
+- [x] Thêm tooltip OHLC chi tiết theo nến đang hover trên biểu đồ giá
+- [x] Thêm tải ảnh MACD/RSI từ modal phóng to
+- [x] Lưu lựa chọn 30/60/120 nến để tự áp dụng lần sau
+- [x] Viết/cập nhật tests, kiểm tra bảo mật/responsive/runtime và tạo checkpoint
 
 ## Confirmed Trading Bot scope
 
 - [ ] Live trading CEX có xác nhận từng lệnh cho Binance và OKX
-- [ ] DEX giai đoạn đầu: EVM/BSC, ưu tiên Uniswap/PancakeSwap; Solana và Robinhood để phase sau
+- [x] DEX giai đoạn đầu: EVM/BSC, ưu tiên Uniswap/PancakeSwap; Solana và Robinhood để phase sau
 - [ ] API key CEX chỉ quyền đọc/giao dịch, không quyền rút; secret lưu server-side
-- [ ] Ví DEX dùng signing flow an toàn, không lưu private key thô phía client
-- [ ] Thêm risk limits, confirmation modal, kill switch và audit log trước live execution
+- [x] Ví DEX dùng signing flow an toàn, không lưu private key thô phía client
+- [x] Thêm risk limits, confirmation modal, kill switch và audit log trước live execution
 
 ## User request: credential input section
 
