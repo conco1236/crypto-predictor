@@ -152,3 +152,9 @@ The interface records offline-mode changes, live switch changes, confirmation pr
 Migration 0010 created `paper_trades` and `paper_bot_audit_logs` without destructive changes. Protected tRPC procedures now create/list/refresh paper trades and read/write audit events per user. Refresh uses the current public market analysis stream and closes open paper trades at TP or SL, calculating directional P&L; the Trading Bot refreshes automatically every 30 seconds while offline mode is enabled.
 
 Telegram signal keyboards now include safe URLs to open the Paper Bot and P&L views. These buttons do not execute exchange or DEX orders. The Trading Bot displays database-backed paper history, TP/SL counts, total P&L and an equity curve. Verification: migration applied successfully, TypeScript clean, and 4 test files / 13 tests passed.
+
+## Telegram paper webhook and equity filters — 2026-08-16
+
+Added `POST /api/telegram/webhook` with `X-Telegram-Bot-Api-Secret-Token` validation using the server-side `TELEGRAM_WEBHOOK_SECRET`. Authorized chat IDs are resolved through the user's Telegram settings. Supported paper-only commands are `/paper_open EXCHANGE SYMBOL INTERVAL`, `/paper_close ID`, `/paper_pause`, and `/paper_resume`; no live CEX/DEX execution path is called. Pause state blocks the protected paper refresh procedure for the current server process. A smoke request with the configured secret and an unmapped test chat returned HTTP 200 without sending a Telegram message.
+
+Trading Bot equity/P&L now filters closed trades by BTC/ETH and 15m/1h/4h/1d. The preview was checked on a 390px viewport, TypeScript passed, 5 test files / 14 tests passed, and filtered browser console logs contained no runtime error records. The previous 28-character webhook secret failed the new minimum-length test; it was replaced through the secret manager and the test then passed.

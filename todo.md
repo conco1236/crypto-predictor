@@ -307,3 +307,12 @@
 - [x] Thêm nút điều khiển paper bot qua Telegram, không đặt lệnh thật
 - [x] Đồng bộ dashboard nhiều thiết bị qua API database
 - [x] Viết/cập nhật migration, tests, heartbeat, Telegram và responsive QA
+
+## User request: Telegram paper bot webhook and equity filters
+
+- [x] Kiểm tra và sửa lỗi runtime/TypeScript hiện tại của webapp
+- [x] Tạo webhook Telegram xác thực cho paper bot: Mở, Đóng, Tạm dừng
+- [x] Chỉ cho webhook tác động paper trading, không gửi lệnh live
+- [x] Thêm bộ lọc equity curve theo BTC/ETH và khung thời gian
+- [x] Viết/cập nhật tests, kiểm tra database, responsive và runtime
+- [x] Cập nhật audit và tạo checkpoint

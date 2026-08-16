@@ -42,6 +42,13 @@ export async function getTelegramSettings(userId: number) {
   return result[0];
 }
 
+export async function getTelegramSettingsByChatId(chatId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(telegramSettings).where(eq(telegramSettings.chatId, chatId)).limit(1);
+  return result[0];
+}
+
 export async function getTelegramSettingsByTaskUid(taskUid: string) {
   const db = await getDb();
   if (!db) return undefined;
