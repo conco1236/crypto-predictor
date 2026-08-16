@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchExchangeCandles, intervalToMs, isCandleClosed } from "./binance";
+import { assessLiquidity, fetchExchangeCandles, intervalToMs, isCandleClosed } from "./binance";
 
 const candle = (openTime: number, base: number) => [String(openTime), String(base), String(base + 2), String(base - 1), String(base + 1), "10"];
 
@@ -23,6 +23,18 @@ describe("multi-exchange market adapters", () => {
     const candles = await fetchExchangeCandles("Binance", "BTCUSDT", "15m", 50);
     expect(candles).toHaveLength(50);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects wide spread or shallow orderbook depth", () => {
+    const result = assessLiquidity([[100, 100]], [[100.3, 100]]);
+    expect(result.isValid).toBe(false);
+    expect(result.warnings.length).toBeGreaterThan(0);
+  });
+  it("accepts a tight, deep orderbook within the 0.5% band", () => {
+    const result = assessLiquidity([[100, 600]], [[100.01, 600]]);
+    expect(result.isValid).toBe(true);
+    expect(result.spreadBps).toBeLessThan(12);
+    expect(result.depthUsd).toBeGreaterThan(100_000);
   });
 
   it.each([

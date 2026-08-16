@@ -1,4 +1,5 @@
 import { analyzeCandles, Candle, IndicatorSnapshot, riskAssessment, tradeLevels } from "./indicators";
+import type { SignalStatus, TimeframeConfirmation } from "./multiTimeframe";
 
 export const SYMBOLS = ["BTCUSDT", "ETHUSDT"] as const;
 export const INTERVALS = ["15m", "1h", "4h", "1d"] as const;
@@ -11,6 +12,15 @@ export type MarketDataQuality = {
   candleCount: number;
   closedCandleCount: number;
   sourceLatencyMs: number;
+  warnings: string[];
+};
+
+export type MarketLiquidityQuality = {
+  spreadBps: number;
+  depthUsd: number;
+  volumeRatio: number;
+  crossExchangeAgreement: boolean;
+  isValid: boolean;
   warnings: string[];
 };
 
@@ -28,6 +38,10 @@ export type MarketAnalysis = {
   candleOpenTime: number;
   candleClosedAt: number;
   dataQuality: MarketDataQuality;
+  liquidity?: MarketLiquidityQuality;
+  signalStatus?: SignalStatus;
+  signalReason?: string;
+  timeframeConfirmation?: TimeframeConfirmation;
 };
 
 const BINANCE_BASE = "https://api.binance.com";
@@ -78,6 +92,45 @@ export async function fetchExchangeCandles(exchange: ExchangeName, symbol: Symbo
   return candles;
 }
 
+function bookDepthUsd(rows: unknown[][], mid: number) {
+  return rows.reduce((sum, row) => { const price = toNumber(row[0]); const quantity = toNumber(row[1]); return Math.abs(price - mid) / Math.max(mid, 1) <= 0.005 ? sum + price * quantity : sum; }, 0);
+}
+
+export function assessLiquidity(bids: unknown[][], asks: unknown[][]) {
+  const bestBid = toNumber(bids[0]?.[0]);
+  const bestAsk = toNumber(asks[0]?.[0]);
+  const mid = (bestBid + bestAsk) / 2;
+  const spreadBps = mid > 0 ? (bestAsk - bestBid) / mid * 10_000 : Infinity;
+  const depthUsd = bookDepthUsd(bids, mid) + bookDepthUsd(asks, mid);
+  const warnings: string[] = [];
+  if (!Number.isFinite(spreadBps) || spreadBps > 12) warnings.push(`Spread ${Number.isFinite(spreadBps) ? spreadBps.toFixed(1) : "không xác định"} bps vượt ngưỡng`);
+  if (depthUsd < 100_000) warnings.push(`Depth 0.5% thấp: $${Math.round(depthUsd).toLocaleString("en-US")}`);
+  return { spreadBps: Number.isFinite(spreadBps) ? Number(spreadBps.toFixed(2)) : 999, depthUsd, warnings, isValid: warnings.length === 0 };
+}
+
+export async function fetchExchangeLiquidity(exchange: ExchangeName, symbol: SymbolName) {
+  const startedAt = Date.now();
+  const instId = symbol === "BTCUSDT" ? "BTC-USDT" : "ETH-USDT";
+  try {
+    let bids: unknown[][] = [];
+    let asks: unknown[][] = [];
+    if (exchange === "Binance") {
+      const data = await json<{ bids?: unknown[][]; asks?: unknown[][] }>(`${BINANCE_BASE}/api/v3/depth?symbol=${symbol}&limit=20`);
+      bids = data.bids ?? []; asks = data.asks ?? [];
+    } else if (exchange === "Bybit") {
+      const data = await json<{ retCode: number; result?: { b?: unknown[][]; a?: unknown[][] } }>(`${BYBIT_BASE}/v5/market/orderbook?category=spot&symbol=${symbol}&limit=50`);
+      bids = data.result?.b ?? []; asks = data.result?.a ?? [];
+    } else {
+      const data = await json<{ code: string; data?: Array<{ bids?: unknown[][]; asks?: unknown[][] }> }>(`${OKX_BASE}/api/v5/market/books?instId=${instId}&sz=50`);
+      bids = data.data?.[0]?.bids ?? []; asks = data.data?.[0]?.asks ?? [];
+    }
+    const assessed = assessLiquidity(bids, asks);
+    return { ...assessed, volumeRatio: 0, crossExchangeAgreement: true, sourceLatencyMs: Date.now() - startedAt };
+  } catch (error) {
+    return { spreadBps: 999, depthUsd: 0, volumeRatio: 0, crossExchangeAgreement: false, isValid: false, warnings: [`Không xác thực orderbook: ${error instanceof Error ? error.message : String(error)}`], sourceLatencyMs: Date.now() - startedAt };
+  }
+}
+
 export async function fetch24hChange(exchange: ExchangeName, symbol: SymbolName) {
   try {
     if (exchange === "Binance") {
@@ -120,5 +173,20 @@ export async function analyzeMarket(exchange: ExchangeName, symbol: SymbolName, 
 export async function analyzeAllMarkets() {
   const tasks = EXCHANGES.flatMap(exchange => SYMBOLS.flatMap(symbol => INTERVALS.map(interval => analyzeMarket(exchange, symbol, interval).catch(() => null))));
   const results = await Promise.all(tasks);
-  return results.filter((item): item is MarketAnalysis => Boolean(item));
+  const analyses = results.filter((item): item is MarketAnalysis => Boolean(item));
+  const liquidityEntries = await Promise.all(EXCHANGES.flatMap(exchange => SYMBOLS.map(async symbol => [exchange, symbol, await fetchExchangeLiquidity(exchange, symbol)] as const)));
+  const liquidityByKey = new Map(liquidityEntries.map(([exchange, symbol, liquidity]) => [`${exchange}:${symbol}`, liquidity] as const));
+  const enriched = analyses.map(analysis => {
+    const liquidity = liquidityByKey.get(`${analysis.exchange}:${analysis.symbol}`) ?? { spreadBps: 999, depthUsd: 0, volumeRatio: analysis.indicators.volumeRatio, crossExchangeAgreement: false, isValid: false, warnings: ["Không có dữ liệu thanh khoản"] };
+    const peers = analyses.filter(peer => peer.symbol === analysis.symbol);
+    const volumeRatios = peers.map(peer => peer.indicators.volumeRatio).filter(Number.isFinite);
+    const median = [...volumeRatios].sort((a, b) => a - b)[Math.floor(volumeRatios.length / 2)] ?? analysis.indicators.volumeRatio;
+    const crossExchangeAgreement = volumeRatios.length < 2 || Math.abs(analysis.indicators.volumeRatio - median) <= 0.75;
+    const warnings = [...liquidity.warnings];
+    if (analysis.indicators.volumeRatio < 0.8) warnings.push("Volume hiện tại thấp hơn 80% trung bình 20 nến");
+    if (!crossExchangeAgreement) warnings.push("Volume lệch đáng kể so với các sàn khác");
+    return { ...analysis, liquidity: { ...liquidity, volumeRatio: analysis.indicators.volumeRatio, crossExchangeAgreement, isValid: liquidity.isValid && crossExchangeAgreement && analysis.indicators.volumeRatio >= 0.8, warnings } };
+  });
+  const { applyTimeframeConfirmation } = await import("./multiTimeframe");
+  return applyTimeframeConfirmation(enriched);
 }

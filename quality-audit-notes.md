@@ -29,3 +29,13 @@ New alerts request a short Vietnamese AI interpretation from the server-side LLM
 ## React key warning fix
 
 The runtime warning was traced to the custom `dot` renderer passed to Recharts `Line` in `RiskHistorySparkline`. Each returned SVG circle now has a stable key derived from its data index, including the empty fallback circle. Targeted sparkline tests passed 10/10, the complete suite passed 61/61, TypeScript and production build passed, the dashboard preview rendered successfully, and the browser console contained no matching unique-key warning after HMR.
+
+## Multi-timeframe, No Trade and liquidity upgrade
+
+Each analysis now receives an explicit `Trade` or `No Trade` status. The 15m signal requires 1h and 4h agreement, the 1h signal requires 4h and 1d agreement, the 4h signal requires 1d agreement, and 1d requires a stronger local score. Neutral, weak, conflicting or missing higher-timeframe data is retained as a snapshot but is blocked from Telegram delivery with a human-readable reason.
+
+Before delivery, the market adapter fetches real orderbook data once per exchange/symbol from Binance, Bybit and OKX. It calculates best-bid/ask spread, USD depth within ±0.5%, current candle volume ratio and cross-exchange volume agreement. Alerts are blocked when liquidity validation fails, while the dashboard and Telegram formatter expose the validation status and warnings. Legacy test fixtures without the new metadata retain compatibility defaults, but production analyses always receive explicit metadata.
+
+The new `pnpm backtest` command performs walk-forward evaluation from real exchange candles, uses only candles before each signal for indicators, evaluates future candles for TP/SL, and groups results by exchange, asset and interval. A real run with 120 candles and an 8-candle forward window produced `backtest-results.json`; the output includes total signals, resolved count, hit rate, expectancy and max drawdown. These figures are diagnostic samples, not guarantees and should not be interpreted as investment performance.
+
+Final verification for this upgrade: TypeScript clean, 64/64 Vitest tests passing, 16 targeted tests passing for multi-timeframe/liquidity/scheduled paths, production build successful, dashboard preview rendered, and browser console had no matching key/runtime warning.

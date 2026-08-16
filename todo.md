@@ -175,3 +175,8 @@
 - [x] Kiểm thử idempotency, retry, delivery log và không gửi cho nến đang hình thành
 - [x] Kiểm tra runtime responsive và tạo checkpoint bàn giao cho luồng Telegram mới
 - [x] Sửa React warning `Each child in a list should have a unique key prop` phát sinh từ component Line và xác minh runtime không còn cảnh báo
+- [x] Thêm xác nhận đa khung thời gian 15m/1h/4h/1d và trạng thái No Trade khi khung xung đột hoặc tín hiệu yếu
+- [x] Thêm volume validation và liquidity validation từ Binance/Bybit/OKX trước khi tạo Telegram delivery
+- [x] Hiển thị lý do No Trade, trạng thái volume/liquidity và metadata xác thực trên dashboard/Telegram
+- [x] Viết script backtest dùng nến thật, xuất hit rate/expectancy/max drawdown theo asset/exchange/interval
+- [x] Bổ sung test, build, audit và checkpoint cho gói nâng cấp multi-timeframe/liquidity/backtest
