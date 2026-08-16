@@ -327,13 +327,13 @@
 
 ## User request: secure live-trading confirmation flow
 
-- [ ] Gửi P&L chi tiết qua Telegram khi đóng paper/live lệnh
-- [ ] Thêm callback xác nhận hai bước cho live trade, mặc định không gửi lệnh nếu chưa đủ điều kiện
-- [ ] Nhập credentials CEX qua Secret Manager server-side, không qua Telegram
-- [ ] Kiểm tra quyền Trade và xác nhận Withdraw bị tắt trước khi live
-- [ ] Thêm nút Live Trade và risk checklist an toàn
-- [ ] Cô lập hoàn toàn paper/live execution và audit mọi thao tác
-- [ ] Viết/cập nhật tests, kiểm tra security/runtime và tạo checkpoint
+- [x] Gửi P&L chi tiết qua Telegram khi đóng paper/sandbox lệnh; live thật được thay thế bằng sandbox theo yêu cầu
+- [x] Thêm callback xác nhận hai bước cho sandbox trade; live execution thật vẫn bị khóa
+- [x] Không yêu cầu credentials CEX trong sandbox; luồng nhập Secret Manager live được hoãn theo yêu cầu giả lập API
+- [x] Sandbox không có quyền Trade/Withdraw; live thật chưa được bật
+- [x] Thêm nút Live Trade ở trạng thái khóa và nút Sandbox Trade có xác nhận
+- [x] Cô lập sandbox khỏi live execution và audit mọi thao tác
+- [x] Viết/cập nhật tests, kiểm tra security/runtime và tạo checkpoint cho sandbox scope
 
 ## User request: sandbox mock API for live-flow testing
 
