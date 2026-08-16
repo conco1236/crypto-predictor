@@ -73,3 +73,17 @@
 - [x] Chụp preview UI có gauge/progress risk score sau thay đổi và xác nhận không tràn chữ
 - [x] Bỏ qua preview SignalCard đã đăng nhập theo yêu cầu; đã kiểm chứng code, TypeScript, tests và build
 - [x] Bỏ qua xác minh trực tiếp gauge trên preview theo yêu cầu; progress dùng layout responsive và có kiểm thử build
+- [x] Tạo nội dung tooltip tiếng Việt giải thích từng thành phần risk score
+- [x] Gắn tooltip vào thanh progress với hover, focus và aria-label
+- [x] Kiểm thử TypeScript, tests, build và responsive tooltip
+- [x] Tạo checkpoint mới sau khi hoàn tất tooltip risk score
+- [x] Kiểm tra tooltip risk score bằng cấu hình responsive/focus, build và preview mobile; mở trực tiếp bị giới hạn bởi AuthGate
+- [x] Tạo checkpoint mới sau tooltip và xác nhận version_id mới
+- [x] Bỏ qua kiểm tra trực tiếp tooltip trên dashboard có SignalCard; phiên preview không đăng nhập
+- [x] Bổ sung helper và unit test tương đương để xác minh nội dung tooltip, nhãn hover/focus và không phụ thuộc AuthGate
+- [x] Tách risk progress/tooltip thành component độc lập có thể kiểm thử DOM
+- [x] Thêm component test kiểm tra aria-label, focus state và nội dung tooltip render khi trigger bằng helper/component contract
+- [x] Chạy test/build và tạo checkpoint mới sau khi hoàn tất xác minh component
+- [x] Thêm test UI/component thực sự cho RiskScoreTooltip: render, aria-label, focus/trigger và nội dung tooltip
+- [x] Bổ sung setup test React component nếu cần và chạy lại toàn bộ suite
+- [x] Tạo checkpoint mới sau khi hoàn tất xác minh component tooltip và có version_id mới
