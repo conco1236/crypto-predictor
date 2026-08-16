@@ -95,3 +95,14 @@
 - [x] Thêm test group risk history theo exchange:symbol:interval để xác minh không trộn dữ liệu
 - [x] Thêm test contract cho procedure market.riskHistories
 - [x] Tạo checkpoint mới cho sparkline risk history và xác nhận version_id 0e247117
+- [x] Thêm tooltip hover/focus cho từng điểm sparkline, hiển thị thời gian đóng nến và risk score
+- [x] Bổ sung test contract dữ liệu tooltip và kiểm tra accessibility
+- [x] Kiểm thử build/responsive và tạo checkpoint mới
+- [x] Thêm hỗ trợ keyboard/focus cho từng điểm risk sparkline với aria-label phù hợp
+- [x] Bổ sung test contract tooltip sparkline cho hover/focus và accessibility
+- [x] Kiểm thử responsive nhiều viewport và lưu checkpoint mới sau tooltip
+- [x] Thêm DOM/component test thực tế cho sparkline: hover/focus điểm mở tooltip và kiểm tra aria-label
+- [x] Kiểm thử tooltip sparkline ở desktop/tablet/mobile sau thay đổi focusable dots
+- [ ] Lưu checkpoint mới sau tooltip sparkline và xác nhận version_id
+- [x] Bổ sung test kỹ thuật responsive cho tooltip sparkline khi preview không có phiên đăng nhập
+- [x] Ghi nhận test DOM là bằng chứng tooltip mở thực tế trước checkpoint

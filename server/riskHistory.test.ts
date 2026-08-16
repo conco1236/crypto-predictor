@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { groupRiskSnapshots, parseRiskSnapshot } from "./db";
 import * as db from "./db";
 import { appRouter } from "./routers";
+import { formatRiskHistoryPoint, getRiskHistoryPointAriaLabel } from "../client/src/lib/riskHistory";
 
 describe("parseRiskSnapshot", () => {
   const createdAt = new Date("2026-08-16T00:00:00.000Z");
@@ -30,6 +31,13 @@ describe("parseRiskSnapshot", () => {
     expect(Object.keys(grouped).sort()).toEqual(["Binance:BTCUSDT:1h", "Binance:BTCUSDT:4h", "Bybit:BTCUSDT:1h"]);
     expect(grouped["Binance:BTCUSDT:1h"].map(point => point.score)).toEqual([65, 70]);
     expect(grouped["Bybit:BTCUSDT:1h"].map(point => point.score)).toEqual([30]);
+  });
+
+  it("formats tooltip content with candle close time and detailed score", () => {
+    const result = formatRiskHistoryPoint({ candleClosedAt: Date.parse("2026-08-16T05:06:07.000Z"), score: 67.8 });
+    expect(result.time).toContain("2026");
+    expect(result.score).toBe("68/100");
+    expect(getRiskHistoryPointAriaLabel({ candleClosedAt: Date.parse("2026-08-16T05:06:07.000Z"), score: 67.8 })).toContain("điểm rủi ro 68/100");
   });
 
   it("calls market.riskHistories with the protected user context and returns grouped output", async () => {

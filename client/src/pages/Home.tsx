@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { useLivePrices } from "@/hooks/useLivePrices";
 import { filterAnalyses, RiskFilter } from "@/lib/riskFilter";
 import { getRiskTooltipDetails } from "@/lib/riskTooltip";
+import RiskHistorySparkline from "@/components/RiskHistorySparkline";
 import RiskScoreTooltip from "@/components/RiskScoreTooltip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Streamdown } from "streamdown";
 import { Activity, Bell, Bot, Check, ChevronRight, Clock3, Gauge, Loader2, LockKeyhole, RefreshCw, Send, Settings2, ShieldAlert, Sparkles, TrendingDown, TrendingUp, Wifi } from "lucide-react";
-import { Line, LineChart, ResponsiveContainer, YAxis } from "recharts";
+import { Line, LineChart, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 
 const intervals = ["15m", "1h", "4h", "1d"] as const;
@@ -39,15 +40,6 @@ function ExchangeTable({ analyses }: { analyses: any[] }) {
 
 function HistoryTable({ rows }: { rows: any[] }) {
   return <Card className="mt-5 border-white/5 bg-[#0d1421]/80"><CardHeader><CardTitle className="text-base">Lịch sử tín hiệu theo sàn</CardTitle></CardHeader><CardContent><div className="overflow-x-auto"><table className="w-full text-left text-xs"><thead className="border-b border-white/5 text-[10px] uppercase tracking-widest text-slate-500"><tr><th className="pb-3">Thời gian</th><th className="pb-3">Sàn</th><th className="pb-3">Tài sản</th><th className="pb-3">Khung</th><th className="pb-3">Tín hiệu</th><th className="pb-3">Điểm</th></tr></thead><tbody>{rows.slice(0, 18).map(row => <tr key={row.id} className="border-b border-white/5 last:border-0"><td className="py-3 text-slate-500">{new Date(row.createdAt).toLocaleString("vi-VN")}</td><td className="py-3 font-medium text-cyan-200">{row.exchange}</td><td className="py-3 text-slate-200">{row.symbol?.replace("USDT", "")}</td><td className="py-3 text-slate-400">{row.interval}</td><td className={`py-3 font-semibold ${tone(row.label)}`}>{row.label}</td><td className={`py-3 font-semibold ${tone(row.label)}`}>{row.score > 0 ? "+" : ""}{row.score}</td></tr>)}</tbody></table>{rows.length === 0 && <p className="py-5 text-center text-sm text-slate-500">Chưa có snapshot. Hãy lưu tín hiệu để bắt đầu lịch sử.</p>}</div></CardContent></Card>;
-}
-
-function RiskHistorySparkline({ points, level }: { points: Array<{ score: number; candleClosedAt: number }>; level: string }) {
-  const stroke = level === "low" ? "#6ee7b7" : level === "high" ? "#fda4af" : "#fde68a";
-  const data = points.map((point, index) => ({ index, score: point.score, candleClosedAt: point.candleClosedAt }));
-  return <div className="rounded-xl border border-white/5 bg-black/15 px-3 py-2" aria-label="Lịch sử điểm rủi ro theo nến">
-    <div className="mb-1 flex items-center justify-between"><p className="text-[10px] uppercase tracking-wider text-slate-500">Diễn biến điểm rủi ro</p><span className="text-[10px] text-slate-500">{points.length ? `${points.length} nến` : "Chưa có dữ liệu"}</span></div>
-    {data.length >= 2 ? <div className="h-12 -mx-1"><ResponsiveContainer width="100%" height="100%"><LineChart data={data}><YAxis domain={[0, 100]} hide /><Line type="monotone" dataKey="score" stroke={stroke} strokeWidth={2} dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div> : <div className="flex h-12 items-center text-[11px] text-slate-500">Cần thêm snapshot sau các lần đóng nến để hiển thị xu hướng.</div>}
-  </div>;
 }
 
 function SignalCard({ analysis, liveTickers, riskHistory }: { analysis: any; liveTickers: Record<string, any>; riskHistory: Array<{ score: number; candleClosedAt: number }> }) {
