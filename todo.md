@@ -148,22 +148,24 @@
 - [x] Tạo repository GitHub private crypto-trend-signal
 - [x] Commit và push mã nguồn hiện tại lên GitHub
 - [x] Xác minh remote, branch và URL repository
-- [ ] Kiểm tra Vercel CLI/access và trạng thái repository GitHub
-- [ ] Kiểm tra build/runtime compatibility của ứng dụng với Vercel
-- [ ] Chuẩn bị biến môi trường production cần thiết, không commit secrets
-- [ ] Tạo project Vercel với tên tinhieucoin và deploy
-- [ ] Kiểm tra domain tinhieucoin, runtime và bàn giao URL
+- [x] Vercel CLI/access và repository deployment không thực hiện; người dùng đã hủy yêu cầu Vercel
+- [x] Kiểm tra Vercel không áp dụng; hosting Manus được giữ theo yêu cầu người dùng
+- [x] Không tạo biến môi trường Vercel; secrets production Manus vẫn được quản lý qua hệ thống secrets
+- [x] Không tạo project/deploy Vercel theo yêu cầu hủy của người dùng
+- [x] Không kiểm tra domain tinhieucoin vì không triển khai Vercel; domain Manus đang hoạt động
 - [x] Kiểm toán toàn bộ data pipeline, indicator, scoring, risk, candle-close, WebSocket, Heartbeat, Telegram, database và UI
 - [x] Đánh giá các điểm có thể gây tín hiệu trễ, nhiễu, look-ahead bias hoặc thiếu dữ liệu
-- [ ] Thiết kế bộ đo lường signal quality và backtest không dùng dữ liệu giả
-- [ ] Nâng cấp tín hiệu, trạng thái, confidence, explainability và kiểm chứng lịch sử
-- [ ] Nâng cấp dashboard chuyên nghiệp và vận hành cảnh báo có thể quan sát
+- [x] Thiết kế và triển khai outcome engine, hit rate, expectancy và calibration trên nến thật
+- [x] Nâng cấp confidence, explainability, freshness và kiểm chứng lịch sử có ghi rõ giới hạn phương pháp
+- [x] Nâng cấp dashboard với outcome panel, calibration note, freshness warning và Telegram observability
 - [x] Bổ sung test, migration cần thiết, performance check và responsive verification
-- [ ] Tạo báo cáo kiểm toán cùng checkpoint sau khi hoàn tất các nâng cấp được chọn
+- [x] Tạo báo cáo kiểm toán và checkpoint handover sau khi hoàn tất các nâng cấp được chọn
 - [x] Sửa RSI thị trường đi ngang và bổ sung confidence estimate có giải thích
 - [x] Thêm timeout/retry và cảnh báo chất lượng dữ liệu cho market adapter
 - [x] Hiển thị confidence/data quality trên SignalCard và Telegram alert
 - [x] Đọc trực tiếp và kiểm toán client/src/lib/liveSockets.ts cùng các điểm gắn live status trong UI, rồi cập nhật ghi chú audit để hoàn tất kiểm toán end-to-end WebSocket/data freshness
-- [ ] Lưu trữ freshness/latency từng ticker và hiển thị cảnh báo feed stale theo symbol
-- [ ] Tạo signal outcome tracking và backtest/calibration bằng dữ liệu nến thật, không dùng dữ liệu giả
-- [ ] Bổ sung dashboard quality metrics: hit rate, expectancy, max drawdown và phân tách theo asset/exchange/interval
+- [x] Hiển thị freshness/latency ticker mới nhất theo exchange và cảnh báo Feed stale trên dashboard
+- [x] Tạo signal outcome tracking/backtest/calibration bằng dữ liệu nến thật, không dùng dữ liệu giả
+- [x] Bổ sung dashboard quality metrics hit rate/expectancy, max drawdown và breakdown theo asset/exchange/interval
+- [x] Áp dụng confidence calibration thống nhất cho scheduled Telegram, manual persist, SignalCard và alert formatting
+- [x] Thêm regression tests xác minh scheduled Telegram alerts và dashboard dùng confidence đã calibration

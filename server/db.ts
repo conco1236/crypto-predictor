@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/mysql2";
 import { and, desc, eq } from "drizzle-orm";
-import { heartbeatRuns, InsertUser, signalProcessingState, signalSnapshots, telegramAlertRules, telegramDeliveryLogs, telegramSettings, users } from "../drizzle/schema";
+import { heartbeatRuns, InsertUser, signalOutcomes, signalProcessingState, signalSnapshots, telegramAlertRules, telegramDeliveryLogs, telegramSettings, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -142,6 +142,18 @@ export async function getTelegramDeliveryHistoryPage(userId: number, page = 1, p
   const safeSize = clampHistoryLimit(pageSize, 20, 50);
   const rows = await db.select().from(telegramDeliveryLogs).where(and(...conditions)).orderBy(desc(telegramDeliveryLogs.createdAt)).limit(safeSize + 1).offset((safePage - 1) * safeSize);
   return { items: rows.slice(0, safeSize), hasMore: rows.length > safeSize };
+}
+
+export async function upsertSignalOutcome(input: { userId: number; snapshotId: number; exchange: string; symbol: string; interval: string; outcome: "take_profit" | "stop_loss" | "expired" | "invalid"; signalCandleOpenTime: number; exitCandleOpenTime?: number; exitPrice?: number; returnPercent: number; candlesObserved: number; reason: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database chưa sẵn sàng");
+  await db.insert(signalOutcomes).values({ ...input, exitCandleOpenTime: input.exitCandleOpenTime ?? null, exitPrice: input.exitPrice ?? null }).onDuplicateKeyUpdate({ set: { outcome: input.outcome, exitCandleOpenTime: input.exitCandleOpenTime ?? null, exitPrice: input.exitPrice ?? null, returnPercent: input.returnPercent, candlesObserved: input.candlesObserved, reason: input.reason, evaluatedAt: new Date() } });
+}
+
+export async function getSignalOutcomes(userId: number, limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(signalOutcomes).where(eq(signalOutcomes.userId, userId)).orderBy(desc(signalOutcomes.evaluatedAt)).limit(clampHistoryLimit(limit, 100, 500));
 }
 
 export async function saveHeartbeatRun(input: { userId: number; taskUid: string; status: "success" | "failed"; savedCount?: number; alertCount?: number; skippedCount?: number; durationMs: number; error?: string | null; startedAt: Date; finishedAt: Date }) {

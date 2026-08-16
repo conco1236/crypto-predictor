@@ -6,8 +6,9 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { parse as parseCookie } from "cookie";
 import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
-import { analyzeAllMarkets } from "./market/binance";
-import { createTelegramDeliveryLog, deleteTelegramAlertRule, getHeartbeatHistory, getHeartbeatHistoryPage, getLastSignal, getProcessedCandle, getRiskHistories, getRiskHistory, getSignalHistory, getTelegramAlertRules, getTelegramDeliveryHistory, getTelegramDeliveryHistoryPage, getTelegramDeliveryLog, getTelegramDeliveryLogById, getTelegramSettings, markProcessedCandle, saveSignalSnapshot, saveTelegramSettings, updateTelegramDeliveryLog, upsertTelegramAlertRule } from "./db";
+import { analyzeAllMarkets, fetchExchangeCandles, type ExchangeName, type IntervalName, type SymbolName } from "./market/binance";
+import { calibrateConfidence, evaluateSignalOutcome, summarizeOutcomes } from "./market/outcomes";
+import { createTelegramDeliveryLog, deleteTelegramAlertRule, getHeartbeatHistory, getHeartbeatHistoryPage, getLastSignal, getProcessedCandle, getRiskHistories, getRiskHistory, getSignalHistory, getTelegramAlertRules, getTelegramDeliveryHistory, getTelegramDeliveryHistoryPage, getTelegramDeliveryLog, getTelegramDeliveryLogById, getTelegramSettings, getSignalOutcomes, markProcessedCandle, saveSignalSnapshot, saveTelegramSettings, updateTelegramDeliveryLog, upsertSignalOutcome, upsertTelegramAlertRule } from "./db";
 import { formatSignalAlert, sendTelegramMessage } from "./services/telegram";
 import { resolveAlertRule } from "./services/alertRules";
 
@@ -48,6 +49,7 @@ export const appRouter = router({
       const analyses = await analyzeAllMarkets();
       const settings = await getTelegramSettings(ctx.user.id);
       const rules = await getTelegramAlertRules(ctx.user.id);
+      const persistedOutcomes = await getSignalOutcomes(ctx.user.id, 200);
       let saved = 0;
       let alerts = 0;
       for (const a of analyses) {
@@ -63,7 +65,8 @@ export const appRouter = router({
           await markProcessedCandle({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
           continue;
         }
-        const message = formatSignalAlert(a);
+        const calibrated = calibrateConfidence(a.indicators.confidence, persistedOutcomes.map(row => ({ direction: a.indicators.label, signalCandleOpenTime: row.signalCandleOpenTime, result: row.outcome, exitCandleOpenTime: row.exitCandleOpenTime ?? undefined, exitPrice: row.exitPrice ?? undefined, returnPercent: row.returnPercent, candlesObserved: row.candlesObserved, reason: row.reason ?? "" })));
+        const message = formatSignalAlert({ ...a, indicators: { ...a.indicators, confidence: calibrated.confidence } });
         const delivery = await createTelegramDeliveryLog({ userId: ctx.user.id, exchange: a.exchange, interval: a.interval, symbol: a.symbol, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt, label: a.indicators.label, score: a.indicators.score, message });
         const attempts = delivery?.attempts ?? 0;
         await updateTelegramDeliveryLog(delivery!.id, { status: "pending", attempts: attempts + 1, lastError: null });
@@ -82,6 +85,34 @@ export const appRouter = router({
     history: protectedProcedure.input(z.object({ limit: z.number().min(1).max(100).default(40) })).query(({ ctx, input }) => getSignalHistory(ctx.user.id, input.limit)),
     riskHistory: protectedProcedure.input(z.object({ exchange: z.string().min(1), symbol: z.string().min(1), interval: z.string().min(1), limit: z.number().min(2).max(60).default(24) })).query(({ ctx, input }) => getRiskHistory(ctx.user.id, input.exchange, input.symbol, input.interval, input.limit)),
     riskHistories: protectedProcedure.input(z.object({ limitPerKey: z.number().min(2).max(60).default(24) }).optional()).query(({ ctx, input }) => getRiskHistories(ctx.user.id, input?.limitPerKey ?? 24)),
+    outcomeMetrics: protectedProcedure.input(z.object({ limit: z.number().int().min(1).max(40).default(20), exchange: z.enum(["Binance", "Bybit", "OKX"]).optional(), symbol: z.enum(["BTCUSDT", "ETHUSDT"]).optional(), interval: z.enum(["15m", "1h", "4h", "1d"]).optional() }).optional()).query(async ({ ctx, input }) => {
+      const history = await getSignalHistory(ctx.user.id, input?.limit ?? 20);
+      const filtered = history.filter(row => (!input?.exchange || row.exchange === input.exchange) && (!input?.symbol || row.symbol === input.symbol) && (!input?.interval || row.interval === input.interval));
+      const groups = new Map<string, typeof filtered>();
+      for (const row of filtered) {
+        const groupKey = `${row.exchange}:${row.symbol}:${row.interval}`;
+        groups.set(groupKey, [...(groups.get(groupKey) ?? []), row]);
+      }
+      const outcomes = [];
+      for (const rows of Array.from(groups.values())) {
+        const first = rows[0];
+        const candles = await fetchExchangeCandles(first.exchange as ExchangeName, first.symbol as SymbolName, first.interval as IntervalName, 300).catch(() => []);
+        for (const row of rows) {
+          const outcome = evaluateSignalOutcome({ direction: row.label, entry: row.entry, takeProfit: row.takeProfit1, stopLoss: row.stopLoss, signalCandleOpenTime: (() => { try { return Number((JSON.parse(row.indicators) as { candleOpenTime?: number }).candleOpenTime ?? row.createdAt.getTime()); } catch { return row.createdAt.getTime(); } })() }, candles);
+          await upsertSignalOutcome({ userId: ctx.user.id, snapshotId: row.id, exchange: row.exchange, symbol: row.symbol, interval: row.interval, outcome: outcome.result, signalCandleOpenTime: outcome.signalCandleOpenTime, exitCandleOpenTime: outcome.exitCandleOpenTime, exitPrice: outcome.exitPrice, returnPercent: outcome.returnPercent, candlesObserved: outcome.candlesObserved, reason: outcome.reason });
+          outcomes.push({ ...outcome, id: row.id, exchange: row.exchange, symbol: row.symbol, interval: row.interval, createdAt: row.createdAt });
+        }
+      }
+      const baseConfidences = filtered.map(row => { try { return Number((JSON.parse(row.indicators) as { confidence?: number }).confidence ?? 50); } catch { return 50; } }).filter(Number.isFinite);
+      const baseConfidence = baseConfidences.length ? baseConfidences.reduce((sum, value) => sum + value, 0) / baseConfidences.length : 50;
+      const breakdown: Record<string, ReturnType<typeof summarizeOutcomes>> = {};
+      for (const outcome of outcomes) {
+        const key = `${outcome.exchange}:${outcome.symbol}:${outcome.interval}`;
+        breakdown[key] = summarizeOutcomes([...(breakdown[key] ? [] : []), ...outcomes.filter(item => `${item.exchange}:${item.symbol}:${item.interval}` === key)]);
+      }
+      const persisted = await getSignalOutcomes(ctx.user.id, input?.limit ?? 20);
+      return { summary: summarizeOutcomes(outcomes), breakdown, calibration: calibrateConfidence(baseConfidence, outcomes), outcomes, persistedCount: persisted.length, evaluatedAt: Date.now(), note: "Outcome được lưu theo snapshot. Snapshot ngoài cửa sổ nến fetch sẽ là invalid; cùng nến chạm TP/SL dùng giả định SL trước." };
+    }),
   }),
   telegram: router({
     get: protectedProcedure.query(async ({ ctx }) => {

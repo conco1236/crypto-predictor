@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { refreshSignalsHandler } from "./scheduled";
 
-const { authenticateRequest, getSettings, getRules, getLast, getProcessed, getDelivery, createDelivery, updateDelivery, markProcessed, saveSnapshot, saveHeartbeat, analyze, send } = vi.hoisted(() => ({
-  authenticateRequest: vi.fn(), getSettings: vi.fn(), getRules: vi.fn(), getLast: vi.fn(), getProcessed: vi.fn(), getDelivery: vi.fn(), createDelivery: vi.fn(), updateDelivery: vi.fn(), markProcessed: vi.fn(), saveSnapshot: vi.fn(), saveHeartbeat: vi.fn(), analyze: vi.fn(), send: vi.fn(),
+const { authenticateRequest, getSettings, getRules, getLast, getProcessed, getDelivery, getSignalOutcomes, createDelivery, updateDelivery, markProcessed, saveSnapshot, saveHeartbeat, analyze, send } = vi.hoisted(() => ({
+  authenticateRequest: vi.fn(), getSettings: vi.fn(), getRules: vi.fn(), getLast: vi.fn(), getProcessed: vi.fn(), getDelivery: vi.fn(), getSignalOutcomes: vi.fn(), createDelivery: vi.fn(), updateDelivery: vi.fn(), markProcessed: vi.fn(), saveSnapshot: vi.fn(), saveHeartbeat: vi.fn(), analyze: vi.fn(), send: vi.fn(),
 }));
 
 vi.mock("../_core/sdk", () => ({ sdk: { authenticateRequest } }));
-vi.mock("../db", () => ({ getTelegramSettingsByTaskUid: getSettings, getTelegramAlertRules: getRules, getLastSignal: getLast, getProcessedCandle: getProcessed, getTelegramDeliveryLog: getDelivery, createTelegramDeliveryLog: createDelivery, updateTelegramDeliveryLog: updateDelivery, markProcessedCandle: markProcessed, saveSignalSnapshot: saveSnapshot, saveHeartbeatRun: saveHeartbeat }));
+vi.mock("../db", () => ({ getTelegramSettingsByTaskUid: getSettings, getTelegramAlertRules: getRules, getLastSignal: getLast, getProcessedCandle: getProcessed, getTelegramDeliveryLog: getDelivery, getSignalOutcomes, createTelegramDeliveryLog: createDelivery, updateTelegramDeliveryLog: updateDelivery, markProcessedCandle: markProcessed, saveSignalSnapshot: saveSnapshot, saveHeartbeatRun: saveHeartbeat }));
 vi.mock("../market/binance", () => ({ analyzeAllMarkets: analyze }));
 vi.mock("./telegram", () => ({ formatSignalAlert: vi.fn(() => "alert"), sendTelegramMessage: send }));
 
@@ -17,7 +17,7 @@ function response() {
 const market = { exchange: "Binance", symbol: "BTCUSDT", interval: "1h", candleOpenTime: 1000, candleClosedAt: 4600, price: 100, indicators: { label: "Bullish", score: 75 }, levels: { entry: 99, takeProfit1: 105, takeProfit2: 110, stopLoss: 95 } } as any;
 
 describe("refreshSignalsHandler", () => {
-  beforeEach(() => { vi.clearAllMocks(); getRules.mockResolvedValue([]); analyze.mockResolvedValue([market]); getDelivery.mockResolvedValue(undefined); createDelivery.mockResolvedValue({ id: 1, status: "pending", attempts: 0 }); saveSnapshot.mockResolvedValue(undefined); updateDelivery.mockResolvedValue(undefined); saveHeartbeat.mockResolvedValue(undefined); send.mockResolvedValue({ ok: true, result: { message_id: 1 } }); });
+  beforeEach(() => { vi.clearAllMocks(); getRules.mockResolvedValue([]); getSignalOutcomes.mockResolvedValue([]); analyze.mockResolvedValue([market]); getDelivery.mockResolvedValue(undefined); createDelivery.mockResolvedValue({ id: 1, status: "pending", attempts: 0 }); saveSnapshot.mockResolvedValue(undefined); updateDelivery.mockResolvedValue(undefined); saveHeartbeat.mockResolvedValue(undefined); send.mockResolvedValue({ ok: true, result: { message_id: 1 } }); });
 
   it("rejects non-cron callers", async () => {
     authenticateRequest.mockResolvedValue({ isCron: false });

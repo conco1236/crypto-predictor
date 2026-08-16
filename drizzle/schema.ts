@@ -67,6 +67,23 @@ export const telegramDeliveryLogs = mysqlTable("telegram_delivery_logs", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => ({ deliveryUnique: uniqueIndex("telegram_delivery_candle_unique").on(table.userId, table.exchange, table.symbol, table.interval, table.candleOpenTime), deliveryLookup: index("telegram_delivery_lookup_idx").on(table.userId, table.status, table.createdAt) }));
 
+export const signalOutcomes = mysqlTable("signal_outcomes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  snapshotId: int("snapshotId").notNull(),
+  exchange: varchar("exchange", { length: 20 }).notNull(),
+  symbol: varchar("symbol", { length: 20 }).notNull(),
+  interval: varchar("interval", { length: 10 }).notNull(),
+  outcome: mysqlEnum("outcome", ["take_profit", "stop_loss", "expired", "invalid"]).notNull(),
+  signalCandleOpenTime: double("signalCandleOpenTime").notNull(),
+  exitCandleOpenTime: double("exitCandleOpenTime"),
+  exitPrice: double("exitPrice"),
+  returnPercent: double("returnPercent").default(0).notNull(),
+  candlesObserved: int("candlesObserved").default(0).notNull(),
+  reason: text("reason"),
+  evaluatedAt: timestamp("evaluatedAt").defaultNow().notNull(),
+}, table => ({ outcomeUnique: uniqueIndex("signal_outcomes_snapshot_unique").on(table.userId, table.snapshotId), lookupIndex: index("signal_outcomes_lookup_idx").on(table.userId, table.exchange, table.symbol, table.interval, table.evaluatedAt) }));
+
 export const heartbeatRuns = mysqlTable("heartbeat_runs", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -106,3 +123,4 @@ export type TelegramAlertRule = typeof telegramAlertRules.$inferSelect;
 export type SignalSnapshot = typeof signalSnapshots.$inferSelect;
 export type TelegramDeliveryLog = typeof telegramDeliveryLogs.$inferSelect;
 export type HeartbeatRun = typeof heartbeatRuns.$inferSelect;
+export type SignalOutcome = typeof signalOutcomes.$inferSelect;

@@ -4,6 +4,7 @@ import {
   createTelegramDeliveryLog,
   getLastSignal,
   getProcessedCandle,
+  getSignalOutcomes,
   getTelegramDeliveryLog,
   getTelegramSettingsByTaskUid,
   getTelegramAlertRules,
@@ -13,6 +14,7 @@ import {
   updateTelegramDeliveryLog,
 } from "../db";
 import { analyzeAllMarkets } from "../market/binance";
+import { calibrateConfidence } from "../market/outcomes";
 import { formatSignalAlert, sendTelegramMessage } from "./telegram";
 import { resolveAlertRule } from "./alertRules";
 
@@ -32,6 +34,7 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
     if (!settings) return res.json({ ok: true, skipped: "orphan" });
     userId = settings.userId;
     const rules = await getTelegramAlertRules(userId);
+    const persistedOutcomes = await getSignalOutcomes(userId, 200);
     const analyses = await analyzeAllMarkets();
 
     for (const a of analyses) {
@@ -50,7 +53,9 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
         await saveSignalSnapshot({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, label: a.indicators.label, score: a.indicators.score, price: a.price, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, risk: a.risk, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
         saved++;
         if (shouldAlert) {
-            currentDelivery = await createTelegramDeliveryLog({ userId, taskUid, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt, label: a.indicators.label, score: a.indicators.score, message: formatSignalAlert(a) });
+            const calibrated = calibrateConfidence(a.indicators.confidence, persistedOutcomes.map(row => ({ direction: a.indicators.label, signalCandleOpenTime: row.signalCandleOpenTime, result: row.outcome, exitCandleOpenTime: row.exitCandleOpenTime ?? undefined, exitPrice: row.exitPrice ?? undefined, returnPercent: row.returnPercent, candlesObserved: row.candlesObserved, reason: row.reason ?? "" })));
+            const calibratedAnalysis = { ...a, indicators: { ...a.indicators, confidence: calibrated.confidence } };
+            currentDelivery = await createTelegramDeliveryLog({ userId, taskUid, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt, label: a.indicators.label, score: a.indicators.score, message: formatSignalAlert(calibratedAnalysis) });
         } else {
           await markProcessedCandle({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
           continue;
@@ -66,7 +71,7 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
       const attempts = currentDelivery.attempts + 1;
       await updateTelegramDeliveryLog(currentDelivery.id, { status: "pending", attempts, lastError: null });
       try {
-        const result = await sendTelegramMessage(alertSettings.botToken, alertSettings.chatId, currentDelivery.message ?? formatSignalAlert(a));
+        const result = await sendTelegramMessage(alertSettings.botToken, alertSettings.chatId, currentDelivery.message ?? formatSignalAlert({ ...a, indicators: { ...a.indicators, confidence: calibrateConfidence(a.indicators.confidence, persistedOutcomes.map(row => ({ direction: a.indicators.label, signalCandleOpenTime: row.signalCandleOpenTime, result: row.outcome, exitCandleOpenTime: row.exitCandleOpenTime ?? undefined, exitPrice: row.exitPrice ?? undefined, returnPercent: row.returnPercent, candlesObserved: row.candlesObserved, reason: row.reason ?? "" }))).confidence } }));
         await updateTelegramDeliveryLog(currentDelivery.id, { status: "sent", telegramMessageId: result.result?.message_id ? String(result.result.message_id) : null, lastError: null, sentAt: new Date() });
         await markProcessedCandle({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
         alerts++;

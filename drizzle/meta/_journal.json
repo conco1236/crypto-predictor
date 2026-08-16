@@ -43,6 +43,13 @@
       "when": 1786874183168,
       "tag": "0005_faithful_grandmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1786877870631,
+      "tag": "0006_loud_norman_osborn",
+      "breakpoints": true
     }
   ]
 }
