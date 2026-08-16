@@ -144,3 +144,7 @@
 - [x] Lưu checkpoint/publish version f40056b9; production URL tải thành công AuthGate sau khi publish, endpoint cần đăng nhập nên không thao tác trực tiếp trong browser; cloud log CLI trả not_found
 - [x] Assert retry failed cùng delivery ID tăng attempts 1→2→3 và chuyển pending→failed→pending→sent
 - [x] Chốt kiểm chứng tương đương bằng 53/53 test, TypeScript, build, preview responsive và audit database; không đăng nhập production theo yêu cầu người dùng
+- [ ] Kiểm tra git status, GitHub identity và loại trừ secrets trước khi push
+- [ ] Tạo repository GitHub private crypto-trend-signal
+- [ ] Commit và push mã nguồn hiện tại lên GitHub
+- [ ] Xác minh remote, branch và URL repository
