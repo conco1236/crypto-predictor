@@ -141,5 +141,6 @@
 - [x] Bổ sung test đọc rules và upsert/update cùng composite scope
 - [x] Bổ sung test retry failed nhiều lần không tạo delivery record mới
 - [x] Bổ sung test retry cùng delivery failed nhiều lần: không tạo record mới, chỉ tăng attempts và cập nhật trạng thái
-- [ ] Lưu checkpoint/publish sau thay đổi cuối và xác minh runtime production của pagination, retry và rule config
+- [x] Lưu checkpoint/publish version f40056b9; production URL tải thành công AuthGate sau khi publish, endpoint cần đăng nhập nên không thao tác trực tiếp trong browser; cloud log CLI trả not_found
 - [x] Assert retry failed cùng delivery ID tăng attempts 1→2→3 và chuyển pending→failed→pending→sent
+- [x] Chốt kiểm chứng tương đương bằng 53/53 test, TypeScript, build, preview responsive và audit database; không đăng nhập production theo yêu cầu người dùng
