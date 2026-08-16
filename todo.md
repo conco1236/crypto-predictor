@@ -113,4 +113,4 @@
 - [x] Bổ sung test component xác minh nhãn reference lines từ implementation thực tế
 - [x] Kiểm thử reference lines ở desktop/tablet/mobile và lưu checkpoint mới
 - [x] Bổ sung test responsive component ở các width desktop/tablet/mobile cho reference lines
-- [ ] Lưu checkpoint mới sau reference lines và cập nhật version_id
+- [x] Lưu checkpoint mới sau reference lines và cập nhật version_id 01bcda66
