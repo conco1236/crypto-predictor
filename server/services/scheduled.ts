@@ -14,6 +14,7 @@ import {
   updateTelegramDeliveryLog,
 } from "../db";
 import { analyzeAllMarkets } from "../market/binance";
+import { fetchRelevantNews } from "../market/news";
 import { calibrateConfidence } from "../market/outcomes";
 import { buildSignalInlineKeyboard, formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./telegram";
 import { resolveAlertRule } from "./alertRules";
@@ -55,7 +56,9 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
         if (shouldAlert) {
             const calibrated = calibrateConfidence(a.indicators.confidence, persistedOutcomes.map(row => ({ direction: a.indicators.label, signalCandleOpenTime: row.signalCandleOpenTime, result: row.outcome, exitCandleOpenTime: row.exitCandleOpenTime ?? undefined, exitPrice: row.exitPrice ?? undefined, returnPercent: row.returnPercent, candlesObserved: row.candlesObserved, reason: row.reason ?? "" })));
             const calibratedAnalysis = { ...a, indicators: { ...a.indicators, confidence: calibrated.confidence } };
-            currentDelivery = await createTelegramDeliveryLog({ userId, taskUid, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt, label: a.indicators.label, score: a.indicators.score, message: formatSignalAlert(calibratedAnalysis, await generateSignalAiAnalysis(calibratedAnalysis)) });
+            const news = a.interval === "1h" ? await fetchRelevantNews(a.symbol) : [];
+            const aiAnalysis = await generateSignalAiAnalysis(calibratedAnalysis, news);
+            currentDelivery = await createTelegramDeliveryLog({ userId, taskUid, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt, label: a.indicators.label, score: a.indicators.score, message: formatSignalAlert(calibratedAnalysis, aiAnalysis, news) });
         } else {
           await markProcessedCandle({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
           continue;

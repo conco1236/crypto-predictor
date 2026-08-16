@@ -1,4 +1,5 @@
 import type { MarketAnalysis } from "../market/binance";
+import type { NewsItem } from "../market/news";
 import { invokeLLM } from "../_core/llm";
 
 export type TelegramSendResult = { ok: boolean; result?: { message_id?: number }; description?: string; error_code?: number };
@@ -26,14 +27,15 @@ export async function sendTelegramMessage(botToken: string, chatId: string, text
   return payload ?? { ok: true };
 }
 
-export async function generateSignalAiAnalysis(analysis: MarketAnalysis) {
+export async function generateSignalAiAnalysis(analysis: MarketAnalysis, news: NewsItem[] = []) {
   const i = analysis.indicators;
   const l = analysis.levels;
   try {
+    const newsContext = news.length ? news.map(item => `- ${item.source} | ${new Date(item.publishedAt).toISOString()} | ${item.title} | ${item.url}`).join("\n") : "Không có tin liên quan trong 6 giờ gần nhất; không suy đoán tin tức.";
     const response = await invokeLLM({
       messages: [
         { role: "system", content: "Bạn là chuyên gia phân tích crypto. Trả lời hoàn toàn bằng tiếng Việt, tối đa 3 câu, chỉ dùng dữ liệu được cung cấp. Nêu xu hướng, điều kiện xác nhận/vô hiệu hóa và rủi ro. Không bịa tin tức, không hứa hẹn lợi nhuận và nhắc đây không phải khuyến nghị đầu tư." },
-        { role: "user", content: `Phân tích tín hiệu ${analysis.symbol} ${analysis.interval} trên ${analysis.exchange}. Xu hướng ${i.label}, trạng thái ${analysis.signalStatus ?? "Trade"}, lý do trạng thái ${analysis.signalReason ?? "không có"}, đồng thuận khung ${(analysis.timeframeConfirmation?.alignedIntervals ?? []).join(", ") || "không có"}, xung đột khung ${(analysis.timeframeConfirmation?.conflictingIntervals ?? []).join(", ") || "không có"}, điểm ${i.score}/100, confidence ${i.confidence}/100, RSI ${i.rsi.toFixed(1)}, ADX ${i.adx.toFixed(1)}, ATR ${i.atr.toFixed(2)}, volume x${i.volumeRatio.toFixed(2)}, liquidity ${analysis.liquidity?.isValid ? "đạt" : "không đạt"}, liquidity warnings ${(analysis.liquidity?.warnings ?? []).join("; ") || "không có"}, Entry ${l.entry.toFixed(2)}, TP1 ${l.takeProfit1.toFixed(2)}, SL ${l.stopLoss.toFixed(2)}. Lý do kỹ thuật: ${(i.reasons ?? []).slice(0, 4).join("; ")}` },
+        { role: "user", content: `Phân tích tín hiệu ${analysis.symbol} ${analysis.interval} trên ${analysis.exchange}. Xu hướng ${i.label}, trạng thái ${analysis.signalStatus ?? "Trade"}, lý do trạng thái ${analysis.signalReason ?? "không có"}, đồng thuận khung ${(analysis.timeframeConfirmation?.alignedIntervals ?? []).join(", ") || "không có"}, xung đột khung ${(analysis.timeframeConfirmation?.conflictingIntervals ?? []).join(", ") || "không có"}, điểm ${i.score}/100, confidence ${i.confidence}/100, RSI ${i.rsi.toFixed(1)}, ADX ${i.adx.toFixed(1)}, ATR ${i.atr.toFixed(2)}, volume x${i.volumeRatio.toFixed(2)}, liquidity ${analysis.liquidity?.isValid ? "đạt" : "không đạt"}, liquidity warnings ${(analysis.liquidity?.warnings ?? []).join("; ") || "không có"}, Entry ${l.entry.toFixed(2)}, TP1 ${l.takeProfit1.toFixed(2)}, SL ${l.stopLoss.toFixed(2)}. Lý do kỹ thuật: ${(i.reasons ?? []).slice(0, 4).join("; ")}. Tin tức có nguồn trong 6 giờ gần nhất:\n${newsContext}` },
       ],
       reasoning: { effort: "low" },
     });
@@ -49,7 +51,7 @@ function escapeTelegramHtml(value: string) {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-export function formatSignalAlert(analysis: MarketAnalysis, aiAnalysis?: string) {
+export function formatSignalAlert(analysis: MarketAnalysis, aiAnalysis?: string, news: NewsItem[] = []) {
   const i = analysis.indicators;
   const l = analysis.levels;
   const confidenceReasons = i.confidenceReasons ?? [];
@@ -66,6 +68,7 @@ export function formatSignalAlert(analysis: MarketAnalysis, aiAnalysis?: string)
     `Dữ liệu: ${dataQuality.candleCount} nến, ${dataQuality.closedCandleCount} nến đã đóng, độ trễ nguồn ${dataQuality.sourceLatencyMs}ms${dataQuality.warnings.length ? ` — ${dataQuality.warnings.join("; ")}` : ""}`,
     analysis.liquidity ? `Thanh khoản: <b>${analysis.liquidity.isValid ? "Đạt" : "Không đạt"}</b> | Spread ${analysis.liquidity.spreadBps.toFixed(1)} bps | Depth ±0.5% $${Math.round(analysis.liquidity.depthUsd).toLocaleString("en-US")} | Volume x${analysis.liquidity.volumeRatio.toFixed(2)}${analysis.liquidity.warnings.length ? ` — ${escapeTelegramHtml(analysis.liquidity.warnings.join("; "))}` : ""}` : "Thanh khoản: chưa xác thực",
     `<b>Phân tích AI:</b> ${escapeTelegramHtml(aiAnalysis ?? "Chưa tạo phân tích AI cho lần gửi này.")}`,
+    ...(analysis.interval === "1h" ? [news.length ? `<b>Tin liên quan 1h:</b>\n${news.slice(0, 3).map(item => `• ${escapeTelegramHtml(item.source)} · ${escapeTelegramHtml(item.title)} · ${new Date(item.publishedAt).toLocaleString("vi-VN")}\n  ${escapeTelegramHtml(item.url)}`).join("\n")}` : `<b>Tin liên quan 1h:</b> Không có tin phù hợp trong 6 giờ gần nhất.`] : []),
     `<i>Chỉ mang tính tham khảo, không phải khuyến nghị đầu tư.</i>`,
   ].join("\n");
 }

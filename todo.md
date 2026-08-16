@@ -184,3 +184,7 @@
 - [x] Xây trang Backtest với filter asset/sàn/timeframe, biểu đồ và bảng thống kê chi tiết
 - [x] Hiển thị decision trace và lý do AI/engine đưa tín hiệu về No Trade trên dashboard
 - [x] Bổ sung test, responsive verification, audit và checkpoint cho gói nâng cấp này
+- [x] Tự động tạo AI analysis cho tín hiệu khung 1h với news context có nguồn và timestamp
+- [x] Giữ gửi Telegram sau khi nến 1h đóng, kèm fallback khi news/AI lỗi và không gửi trùng
+- [x] Hiển thị nguồn tin, thời điểm tin và mức ảnh hưởng trong Telegram/dashboard
+- [x] Bổ sung test, audit, build và checkpoint cho luồng AI/news 1h

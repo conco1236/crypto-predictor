@@ -8,6 +8,7 @@ import { parse as parseCookie } from "cookie";
 import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { analyzeAllMarkets, fetchExchangeCandles, type ExchangeName, type IntervalName, type SymbolName } from "./market/binance";
 import { calibrateConfidence, evaluateSignalOutcome, summarizeOutcomes } from "./market/outcomes";
+import { fetchRelevantNews } from "./market/news";
 import { createTelegramDeliveryLog, deleteTelegramAlertRule, getHeartbeatHistory, getHeartbeatHistoryPage, getLastSignal, getProcessedCandle, getRiskHistories, getRiskHistory, getSignalHistory, getTelegramAlertRules, getTelegramDeliveryHistory, getTelegramDeliveryHistoryPage, getTelegramDeliveryLog, getTelegramDeliveryLogById, getTelegramSettings, getSignalOutcomes, markProcessedCandle, saveSignalSnapshot, saveTelegramSettings, updateTelegramDeliveryLog, upsertSignalOutcome, upsertTelegramAlertRule } from "./db";
 import { buildSignalInlineKeyboard, formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./services/telegram";
 import { resolveAlertRule } from "./services/alertRules";
@@ -67,7 +68,8 @@ export const appRouter = router({
         }
         const calibrated = calibrateConfidence(a.indicators.confidence, persistedOutcomes.map(row => ({ direction: a.indicators.label, signalCandleOpenTime: row.signalCandleOpenTime, result: row.outcome, exitCandleOpenTime: row.exitCandleOpenTime ?? undefined, exitPrice: row.exitPrice ?? undefined, returnPercent: row.returnPercent, candlesObserved: row.candlesObserved, reason: row.reason ?? "" })));
         const calibratedAnalysis = { ...a, indicators: { ...a.indicators, confidence: calibrated.confidence } };
-        const message = formatSignalAlert(calibratedAnalysis, await generateSignalAiAnalysis(calibratedAnalysis));
+        const news = a.interval === "1h" ? await fetchRelevantNews(a.symbol) : [];
+        const message = formatSignalAlert(calibratedAnalysis, await generateSignalAiAnalysis(calibratedAnalysis, news), news);
         const delivery = await createTelegramDeliveryLog({ userId: ctx.user.id, exchange: a.exchange, interval: a.interval, symbol: a.symbol, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt, label: a.indicators.label, score: a.indicators.score, message });
         const attempts = delivery?.attempts ?? 0;
         await updateTelegramDeliveryLog(delivery!.id, { status: "pending", attempts: attempts + 1, lastError: null });

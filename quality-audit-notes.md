@@ -49,3 +49,11 @@ A protected `?page=backtest` dashboard page now provides exchange, asset and tim
 SignalCards now show a No Trade decision trace containing the status reason, aligned and conflicting timeframes, technical confidence reasons and liquidity warnings. The aggregate AI summary also receives signal status, reason and liquidity warnings so its Vietnamese explanation does not omit the decision context.
 
 Final verification for this feature set: TypeScript clean, 67/67 Vitest tests passing, production build successful, Backtest preview rendered with filters, and browser console contained no matching React key/runtime warning.
+
+## Automated 1h AI/news Telegram analysis
+
+The 1h candle-close path now fetches recent BTC/ETH context from public RSS feeds (CoinDesk and Crypto Briefing), filters items to the last six hours, preserves source, URL and publication timestamp, and passes only that bounded context to the server-side LLM. The Telegram message includes up to three related headlines with source/time/URL. Other timeframes do not receive a misleading news section.
+
+News fetch failures, stale feeds and empty matches do not block the technical signal: the AI prompt explicitly states that no news is available and must not infer events, while the existing AI fallback still produces a technical-only explanation. New 1h deliveries persist the final message, so retries do not call RSS or AI again. The existing Heartbeat candle-close, processed-candle guard, delivery log and retry/idempotency path remain active.
+
+Final verification: TypeScript clean, 69/69 Vitest tests passing across 18 files, production build successful, and browser console had no matching React key/runtime warning. RSS sources were selected after verifying the published feed documentation from CoinDesk and Crypto Briefing.
