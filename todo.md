@@ -197,3 +197,6 @@
 - [x] Thêm API timeline kết hợp news quan trọng với giá/snapshot thật theo coin và timeframe
 - [x] Thêm nút Phân tích lại tín hiệu cũ với rate limit theo user/snapshot và audit metadata
 - [x] Bổ sung test, performance/responsive audit và checkpoint cho gói nâng cấp
+- [x] Gửi Telegram cho mọi nến đã đóng ở 15m/1h/4h/1d, bao gồm Trade và No Trade, không phụ thuộc threshold/change
+- [x] Giữ chống gửi trùng, retry, delivery log và hiển thị rõ lý do No Trade/liquidity trong mọi tin
+- [x] Cập nhật test Heartbeat/manual, audit, build và checkpoint cho chế độ gửi mọi candle-close

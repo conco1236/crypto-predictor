@@ -47,7 +47,7 @@ describe("refreshSignalsHandler", () => {
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ saved: 0, alerts: 0 }));
   });
 
-  it("saves signals and alerts only after a changed strong signal", async () => {
+  it("saves signals and alerts for every new closed candle", async () => {
     authenticateRequest.mockResolvedValue({ isCron: true, taskUid: "task-1" });
     getSettings.mockResolvedValue({ userId: 7, enabled: 1, alertThreshold: 50, botToken: "token", chatId: "chat" });
     getLast.mockResolvedValue({ label: "Bearish" });
@@ -57,6 +57,17 @@ describe("refreshSignalsHandler", () => {
     expect(saveSnapshot).toHaveBeenCalledOnce();
     expect(send).toHaveBeenCalledOnce();
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ ok: true, saved: 1, alerts: 1 }));
+  });
+
+  it("alerts even when the signal is No Trade, weak, or liquidity-invalid", async () => {
+    authenticateRequest.mockResolvedValue({ isCron: true, taskUid: "task-1" });
+    getSettings.mockResolvedValue({ userId: 7, enabled: 1, alertThreshold: 90, botToken: "token", chatId: "chat" });
+    getProcessed.mockResolvedValue(undefined);
+    analyze.mockResolvedValue([{ ...market, indicators: { label: "Neutral", score: 3 }, signalStatus: "No Trade", signalReason: "Khung thời gian xung đột", liquidity: { isValid: false, warnings: ["Spread cao"] } }]);
+    const res = response();
+    await refreshSignalsHandler({} as any, res);
+    expect(send).toHaveBeenCalledOnce();
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ alerts: 1 }));
   });
 
   it("records a failed delivery without marking the candle, so the next Heartbeat can retry", async () => {

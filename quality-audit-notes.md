@@ -68,3 +68,9 @@ Migration `0007_pretty_cargill.sql` tạo `news_ai_settings`, `news_items` và `
 - `market.timeline` combines persisted signal snapshot prices and collected news by protected user scope; News Center renders a 1h price line and links important collected headlines to source URLs. No synthetic market data is generated.
 - `market.reanalyze` verifies snapshot ownership, enforces a persistent 15-minute per-user/per-snapshot window through `ai_reanalysis_requests`, calls AI only after the guard, stores the new analysis and records completed/failed audit status.
 - Verification: TypeScript clean, full regression suite passed, production build passed, and desktop preview showed pagination controls and the timeline section without layout overflow.
+
+## All closed-candle Telegram delivery
+
+Heartbeat và manual persist hiện tạo delivery cho mọi nến mới đã đóng ở 15m/1h/4h/1d khi Telegram rule/token/chat đang bật. Các điều kiện score threshold, đổi label, signalStatus Trade và liquidity validity không còn chặn việc gửi; tin nhắn vẫn hiển thị rõ Trade/No Trade, lý do, cảnh báo thanh khoản, confidence và metadata. Candle đã xử lý vẫn bị bỏ qua, delivery failed vẫn retry theo message đã lưu và candle chỉ được mark sau khi gửi thành công.
+
+Regression mới chứng minh cả tín hiệu No Trade, điểm thấp và liquidity-invalid vẫn được gửi. Verification: scheduled tests 7/7, full regression suite đạt, TypeScript clean và production build successful.

@@ -57,12 +57,10 @@ export const appRouter = router({
       for (const a of analyses) {
         const processed = await getProcessedCandle(ctx.user.id, a.exchange, a.symbol, a.interval);
         if (processed && processed.candleOpenTime >= a.candleOpenTime) continue;
-        const previous = await getLastSignal(ctx.user.id, a.exchange, a.symbol, a.interval);
         const alertSettings = settings ? resolveAlertRule(settings, rules, { exchange: a.exchange, symbol: a.symbol, interval: a.interval }) : undefined;
-        const changed = !previous || previous.label !== a.indicators.label;
         await saveSignalSnapshot({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, price: a.price, label: a.indicators.label, score: a.indicators.score, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, risk: a.risk, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
         saved++;
-        const shouldAlert = Boolean((a.signalStatus ?? "Trade") === "Trade" && (a.liquidity?.isValid ?? true) && alertSettings?.enabled && Math.abs(a.indicators.score) >= alertSettings.alertThreshold && changed && alertSettings.botToken && alertSettings.chatId);
+        const shouldAlert = Boolean(alertSettings?.enabled && alertSettings.botToken && alertSettings.chatId);
         if (!shouldAlert) {
           await markProcessedCandle({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
           continue;
