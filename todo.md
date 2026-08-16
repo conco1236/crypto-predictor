@@ -103,6 +103,6 @@
 - [x] Kiểm thử responsive nhiều viewport và lưu checkpoint mới sau tooltip
 - [x] Thêm DOM/component test thực tế cho sparkline: hover/focus điểm mở tooltip và kiểm tra aria-label
 - [x] Kiểm thử tooltip sparkline ở desktop/tablet/mobile sau thay đổi focusable dots
-- [ ] Lưu checkpoint mới sau tooltip sparkline và xác nhận version_id
+- [x] Lưu checkpoint mới sau tooltip sparkline và xác nhận version_id 64b98586
 - [x] Bổ sung test kỹ thuật responsive cho tooltip sparkline khi preview không có phiên đăng nhập
 - [x] Ghi nhận test DOM là bằng chứng tooltip mở thực tế trước checkpoint
