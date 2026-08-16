@@ -61,3 +61,10 @@ Final verification: TypeScript clean, 69/69 Vitest tests passing across 18 files
 ## News settings and history upgrade
 
 Migration `0007_pretty_cargill.sql` tạo `news_ai_settings`, `news_items` và `ai_analyses` cùng index tra cứu; đã áp dụng production, không destructive. News Center hỗ trợ cấu hình nhiều RSS URL, lookback 1–48 giờ, các interval AI và bật/tắt news context; custom RSS URL được adapter sử dụng thật. Heartbeat/manual persist đọc cấu hình theo user, lưu news items và AI analysis history; retry vẫn dùng delivery message đã persist. Dashboard có route `?page=news`, history theo coin và AI history 1h; Home có search/filter signal history theo symbol/interval. Verification: TypeScript đạt, 69/69 tests đạt, production build đạt; preview desktop 1280 và mobile 375 không ghi nhận lỗi layout trong vùng đã kiểm tra.
+
+## News pagination, price timeline and reanalysis
+
+- News Center now uses server-side page/size queries for news and AI history, with user/symbol filters and hasMore pagination state; the client no longer loads the full history collection.
+- `market.timeline` combines persisted signal snapshot prices and collected news by protected user scope; News Center renders a 1h price line and links important collected headlines to source URLs. No synthetic market data is generated.
+- `market.reanalyze` verifies snapshot ownership, enforces a persistent 15-minute per-user/per-snapshot window through `ai_reanalysis_requests`, calls AI only after the guard, stores the new analysis and records completed/failed audit status.
+- Verification: TypeScript clean, full regression suite passed, production build passed, and desktop preview showed pagination controls and the timeline section without layout overflow.

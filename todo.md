@@ -193,3 +193,7 @@
 - [x] Thêm API/UI hiển thị lịch sử tin tức và phân tích AI
 - [x] Thêm filter/search/pagination lịch sử tín hiệu theo symbol/coin
 - [x] Migration, test, responsive audit và checkpoint cho settings/news/signal history
+- [x] Thêm phân trang server-side cho news history và AI history trong News Center
+- [x] Thêm API timeline kết hợp news quan trọng với giá/snapshot thật theo coin và timeframe
+- [x] Thêm nút Phân tích lại tín hiệu cũ với rate limit theo user/snapshot và audit metadata
+- [x] Bổ sung test, performance/responsive audit và checkpoint cho gói nâng cấp

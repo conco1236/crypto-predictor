@@ -9,7 +9,7 @@ import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { analyzeAllMarkets, fetchExchangeCandles, type ExchangeName, type IntervalName, type SymbolName } from "./market/binance";
 import { calibrateConfidence, evaluateSignalOutcome, summarizeOutcomes } from "./market/outcomes";
 import { fetchRelevantNews } from "./market/news";
-import { createTelegramDeliveryLog, deleteTelegramAlertRule, getHeartbeatHistory, getHeartbeatHistoryPage, getLastSignal, getProcessedCandle, getRiskHistories, getRiskHistory, getSignalHistory, getTelegramAlertRules, getTelegramDeliveryHistory, getTelegramDeliveryHistoryPage, getTelegramDeliveryLog, getTelegramDeliveryLogById, getTelegramSettings, getSignalOutcomes, getNewsAiSettings, getNewsHistory, getAiHistory, markProcessedCandle, saveAiAnalysis, saveNewsAiSettings, saveNewsItem, saveSignalSnapshot, saveTelegramSettings, updateTelegramDeliveryLog, upsertSignalOutcome, upsertTelegramAlertRule } from "./db";
+import { createReanalysisRequest, createTelegramDeliveryLog, deleteTelegramAlertRule, getHeartbeatHistory, getHeartbeatHistoryPage, getLastSignal, getProcessedCandle, getRecentReanalysis, getRiskHistories, getRiskHistory, getSignalHistory, getSignalSnapshotById, getTelegramAlertRules, getTelegramDeliveryHistory, getTelegramDeliveryHistoryPage, getTelegramDeliveryLog, getTelegramDeliveryLogById, getTelegramSettings, getSignalOutcomes, getNewsAiSettings, getNewsHistory, getNewsHistoryPage, getAiHistory, getAiHistoryPage, markProcessedCandle, saveAiAnalysis, saveNewsAiSettings, saveNewsItem, saveSignalSnapshot, saveTelegramSettings, updateReanalysisRequest, updateTelegramDeliveryLog, upsertSignalOutcome, upsertTelegramAlertRule } from "./db";
 import { buildSignalInlineKeyboard, formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./services/telegram";
 import { resolveAlertRule } from "./services/alertRules";
 
@@ -92,6 +92,26 @@ export const appRouter = router({
       return { saved, alerts, updatedAt: Date.now() };
     }),
     history: protectedProcedure.input(z.object({ limit: z.number().min(1).max(200).default(40), symbol: z.string().max(20).optional(), interval: z.enum(["15m", "1h", "4h", "1d"]).optional() })).query(({ ctx, input }) => getSignalHistory(ctx.user.id, input.limit, { symbol: input.symbol, interval: input.interval })),
+    timeline: protectedProcedure.input(z.object({ symbol: z.enum(["BTCUSDT", "ETHUSDT"]), interval: z.enum(["15m", "1h", "4h", "1d"]).default("1h"), limit: z.number().int().min(10).max(100).default(60) })).query(async ({ ctx, input }) => ({ prices: await getSignalHistory(ctx.user.id, input.limit, { symbol: input.symbol, interval: input.interval }), news: await getNewsHistory(ctx.user.id, input.limit, input.symbol) })),
+    reanalyze: protectedProcedure.input(z.object({ snapshotId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const snapshot = await getSignalSnapshotById(ctx.user.id, input.snapshotId);
+      if (!snapshot) throw new Error("Không tìm thấy tín hiệu hoặc bạn không có quyền truy cập");
+      const recent = await getRecentReanalysis(ctx.user.id, input.snapshotId);
+      if (recent) throw new Error("Tín hiệu này chỉ được phân tích lại một lần trong mỗi 15 phút");
+      const requestId = await createReanalysisRequest(ctx.user.id, input.snapshotId);
+      try {
+        const settings = await getNewsAiSettings(ctx.user.id);
+        const news = snapshot.interval === "1h" ? await fetchRelevantNews(snapshot.symbol as SymbolName, Date.now(), { sources: JSON.parse(settings?.rssSources ?? "[]") as string[], lookbackHours: settings?.newsLookbackHours ?? 6 }) : [];
+        const result = await invokeLLM({ messages: [{ role: "system", content: "Bạn là chuyên gia phân tích crypto. Viết bằng tiếng Việt, chỉ dùng dữ liệu được cung cấp, nêu bối cảnh, tín hiệu, rủi ro và điều kiện vô hiệu hóa. Không đưa ra cam kết lợi nhuận." }, { role: "user", content: `Phân tích lại tín hiệu cũ ${snapshot.symbol} ${snapshot.interval}. Giá ${snapshot.price}; Entry ${snapshot.entry}; TP1 ${snapshot.takeProfit1}; TP2 ${snapshot.takeProfit2}; SL ${snapshot.stopLoss}; chỉ báo ${snapshot.indicators}; tin tức: ${news.map(item => `${item.title} (${item.source}, ${new Date(item.publishedAt).toISOString()})`).join(" | ") || "không có tin"}` }], reasoning: { effort: "low" }});
+        const analysis = responseText(result);
+        await saveAiAnalysis(ctx.user.id, { snapshotId: snapshot.id, symbol: snapshot.symbol, interval: snapshot.interval, analysis });
+        await updateReanalysisRequest(requestId, { status: "completed" });
+        return { analysis, generatedAt: Date.now() };
+      } catch (error) {
+        await updateReanalysisRequest(requestId, { status: "failed", error: error instanceof Error ? error.message : String(error) });
+        throw error;
+      }
+    }),
     riskHistory: protectedProcedure.input(z.object({ exchange: z.string().min(1), symbol: z.string().min(1), interval: z.string().min(1), limit: z.number().min(2).max(60).default(24) })).query(({ ctx, input }) => getRiskHistory(ctx.user.id, input.exchange, input.symbol, input.interval, input.limit)),
     riskHistories: protectedProcedure.input(z.object({ limitPerKey: z.number().min(2).max(60).default(24) }).optional()).query(({ ctx, input }) => getRiskHistories(ctx.user.id, input?.limitPerKey ?? 24)),
     outcomeMetrics: protectedProcedure.input(z.object({ limit: z.number().int().min(1).max(40).default(20), exchange: z.enum(["Binance", "Bybit", "OKX"]).optional(), symbol: z.enum(["BTCUSDT", "ETHUSDT"]).optional(), interval: z.enum(["15m", "1h", "4h", "1d"]).optional() }).optional()).query(async ({ ctx, input }) => {
@@ -130,7 +150,9 @@ export const appRouter = router({
     }),
     saveSettings: protectedProcedure.input(z.object({ rssSources: z.array(z.string().url()).min(1).max(10), newsLookbackHours: z.number().int().min(1).max(48), aiIntervals: z.array(z.enum(["15m", "1h", "4h", "1d"])).min(1).max(4), enabled: z.boolean() })).mutation(({ ctx, input }) => saveNewsAiSettings(ctx.user.id, { ...input, enabled: input.enabled ? 1 : 0 })),
     history: protectedProcedure.input(z.object({ limit: z.number().int().min(1).max(200).default(50), symbol: z.string().max(20).optional() }).optional()).query(({ ctx, input }) => getNewsHistory(ctx.user.id, input?.limit ?? 50, input?.symbol)),
+    historyPage: protectedProcedure.input(z.object({ page: z.number().int().min(1).default(1), pageSize: z.number().int().min(5).max(50).default(20), symbol: z.string().max(20).optional() }).optional()).query(({ ctx, input }) => getNewsHistoryPage(ctx.user.id, input?.page ?? 1, input?.pageSize ?? 20, input?.symbol)),
     aiHistory: protectedProcedure.input(z.object({ limit: z.number().int().min(1).max(200).default(50), symbol: z.string().max(20).optional(), interval: z.enum(["15m", "1h", "4h", "1d"]).optional() }).optional()).query(({ ctx, input }) => getAiHistory(ctx.user.id, input?.limit ?? 50, { symbol: input?.symbol, interval: input?.interval })),
+    aiHistoryPage: protectedProcedure.input(z.object({ page: z.number().int().min(1).default(1), pageSize: z.number().int().min(5).max(50).default(20), symbol: z.string().max(20).optional(), interval: z.enum(["15m", "1h", "4h", "1d"]).optional() }).optional()).query(({ ctx, input }) => getAiHistoryPage(ctx.user.id, input?.page ?? 1, input?.pageSize ?? 20, { symbol: input?.symbol, interval: input?.interval })),
   }),
   telegram: router({
     get: protectedProcedure.query(async ({ ctx }) => {

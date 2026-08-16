@@ -118,6 +118,16 @@ export const aiAnalyses = mysqlTable("ai_analyses", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => ({ aiLookup: index("ai_analyses_lookup_idx").on(table.userId, table.symbol, table.interval, table.createdAt) }));
 
+export const aiReanalysisRequests = mysqlTable("ai_reanalysis_requests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  snapshotId: int("snapshotId").notNull(),
+  status: mysqlEnum("status", ["started", "completed", "failed"]).notNull(),
+  requestedAt: timestamp("requestedAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+  error: text("error"),
+}, table => ({ reanalysisLookup: index("ai_reanalysis_lookup_idx").on(table.userId, table.snapshotId, table.requestedAt) }));
+
 export const heartbeatRuns = mysqlTable("heartbeat_runs", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -161,3 +171,4 @@ export type SignalOutcome = typeof signalOutcomes.$inferSelect;
 export type NewsAiSetting = typeof newsAiSettings.$inferSelect;
 export type NewsItem = typeof newsItems.$inferSelect;
 export type AiAnalysis = typeof aiAnalyses.$inferSelect;
+export type AiReanalysisRequest = typeof aiReanalysisRequests.$inferSelect;

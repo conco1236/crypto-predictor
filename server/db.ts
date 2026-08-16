@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/mysql2";
-import { and, desc, eq, like } from "drizzle-orm";
-import { aiAnalyses, heartbeatRuns, InsertUser, newsAiSettings, newsItems, signalOutcomes, signalProcessingState, signalSnapshots, telegramAlertRules, telegramDeliveryLogs, telegramSettings, users } from "../drizzle/schema";
+import { and, desc, eq, gt, like } from "drizzle-orm";
+import { aiAnalyses, aiReanalysisRequests, heartbeatRuns, InsertUser, newsAiSettings, newsItems, signalOutcomes, signalProcessingState, signalSnapshots, telegramAlertRules, telegramDeliveryLogs, telegramSettings, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -254,6 +254,54 @@ export async function getAiHistory(userId: number, limit = 50, filters?: { symbo
   if (filters?.symbol) conditions.push(like(aiAnalyses.symbol, `%${filters.symbol}%`));
   if (filters?.interval) conditions.push(eq(aiAnalyses.interval, filters.interval));
   return db.select().from(aiAnalyses).where(and(...conditions)).orderBy(desc(aiAnalyses.createdAt)).limit(clampHistoryLimit(limit, 50, 200));
+}
+
+export async function getNewsHistoryPage(userId: number, page = 1, pageSize = 20, symbol?: string) {
+  const db = await getDb();
+  if (!db) return { items: [], hasMore: false };
+  const conditions = [eq(newsItems.userId, userId)];
+  if (symbol) conditions.push(like(newsItems.symbol, `%${symbol}%`));
+  const safeSize = clampHistoryLimit(pageSize, 20, 50);
+  const rows = await db.select().from(newsItems).where(and(...conditions)).orderBy(desc(newsItems.publishedAt)).limit(safeSize + 1).offset((Math.max(page, 1) - 1) * safeSize);
+  return { items: rows.slice(0, safeSize), hasMore: rows.length > safeSize };
+}
+
+export async function getAiHistoryPage(userId: number, page = 1, pageSize = 20, filters?: { symbol?: string; interval?: string }) {
+  const db = await getDb();
+  if (!db) return { items: [], hasMore: false };
+  const conditions = [eq(aiAnalyses.userId, userId)];
+  if (filters?.symbol) conditions.push(like(aiAnalyses.symbol, `%${filters.symbol}%`));
+  if (filters?.interval) conditions.push(eq(aiAnalyses.interval, filters.interval));
+  const safeSize = clampHistoryLimit(pageSize, 20, 50);
+  const rows = await db.select().from(aiAnalyses).where(and(...conditions)).orderBy(desc(aiAnalyses.createdAt)).limit(safeSize + 1).offset((Math.max(page, 1) - 1) * safeSize);
+  return { items: rows.slice(0, safeSize), hasMore: rows.length > safeSize };
+}
+
+export async function getSignalSnapshotById(userId: number, id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(signalSnapshots).where(and(eq(signalSnapshots.userId, userId), eq(signalSnapshots.id, id))).limit(1);
+  return result[0];
+}
+
+export async function getRecentReanalysis(userId: number, snapshotId: number, windowMs = 15 * 60 * 1000) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(aiReanalysisRequests).where(and(eq(aiReanalysisRequests.userId, userId), eq(aiReanalysisRequests.snapshotId, snapshotId), gt(aiReanalysisRequests.requestedAt, new Date(Date.now() - windowMs)))).orderBy(desc(aiReanalysisRequests.requestedAt)).limit(1);
+  return result[0];
+}
+
+export async function createReanalysisRequest(userId: number, snapshotId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database chưa sẵn sàng");
+  const result = await db.insert(aiReanalysisRequests).values({ userId, snapshotId, status: "started" });
+  return Number(result[0].insertId);
+}
+
+export async function updateReanalysisRequest(id: number, data: { status: "started" | "completed" | "failed"; error?: string | null }) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(aiReanalysisRequests).set({ ...data, completedAt: data.status === "started" ? null : new Date() }).where(eq(aiReanalysisRequests.id, id));
 }
 
 export async function getLastSignal(userId: number, exchange: string, symbol: string, interval: string) {
