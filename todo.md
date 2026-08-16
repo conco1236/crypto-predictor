@@ -213,3 +213,9 @@
 - [x] Bật Light/Dark mode toàn cục, lưu lựa chọn localStorage và thêm nút chuyển theme
 - [x] Chạy 18 test files / 71 tests, TypeScript, production build và mobile preview
 - [x] Cập nhật quality audit và chuẩn bị checkpoint handover
+
+## User request: Light mode contrast refresh
+
+- [x] Điều chỉnh nền Light mode và semantic tokens để tránh nền xám/hồng nhạt gây mất tương phản
+- [x] Tăng độ tương phản chữ, badge, Risk Score, Bearish/No Trade và các panel cảnh báo trong Light mode
+- [x] Kiểm thử responsive, TypeScript, Vitest, build và tạo checkpoint handover

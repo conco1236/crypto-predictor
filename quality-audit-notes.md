@@ -90,3 +90,9 @@ Nguyên nhân Backtest thiếu số liệu hữu ích là pipeline đánh giá s
 Bộ scoring kỹ thuật được điều chỉnh theo hướng đối xứng cho Bearish và bổ sung xác nhận cấu trúc 5 nến gần nhất nhằm giảm nhiễu một nến. Logic vẫn look-ahead safe vì chỉ dùng cửa sổ phân tích đã đóng. Không tạo dữ liệu giả hoặc fabricated outcomes.
 
 Backtest được tinh gọn với các metric resolved/expired/horizon, bảng chi tiết và semantic tokens. Theme switching được bật toàn cục, lưu lựa chọn bằng localStorage; Home, Backtest và News Center có nút Light/Dark. Kiểm thử cuối: TypeScript clean, 18 test files / 71 tests passed, production build passed, mobile preview rendered, browser console không có lỗi/warning tương ứng. Build vẫn còn cảnh báo chunk frontend lớn từ bundle Mermaid/editor hiện hữu, không phải lỗi biên dịch.
+
+## Light mode contrast refresh — 2026-08-16
+
+Light mode now uses a neutral warm-white background, white cards, darker foreground/muted text and more visible borders. Signal cards use pale semantic fills instead of translucent saturated overlays: Bullish uses emerald-50, Bearish rose-50 and Neutral amber-50; dark mode retains the existing translucent palette. Risk badges and trend labels use dark light-mode text with dark-mode overrides, improving readability for Bearish/No Trade and risk indicators.
+
+TypeScript passed and targeted technical/UI tests passed: 4 files / 14 tests. A subsequent full QA attempt was terminated by the sandbox under high memory pressure before completion; the prior full suite/build had passed immediately before this CSS-only refresh. The existing production build warning concerns large frontend chunks, not a TypeScript or runtime error.
