@@ -27,6 +27,7 @@ export const telegramSettings = mysqlTable("telegram_settings", {
 export const signalSnapshots = mysqlTable("signal_snapshots", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
+  exchange: varchar("exchange", { length: 20 }).notNull().default("Binance"),
   symbol: varchar("symbol", { length: 20 }).notNull(),
   interval: varchar("interval", { length: 10 }).notNull(),
   label: mysqlEnum("label", ["Bullish", "Bearish", "Neutral"]).notNull(),

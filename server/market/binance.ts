@@ -1,12 +1,14 @@
 import { analyzeCandles, Candle, IndicatorSnapshot, tradeLevels } from "./indicators";
 
-const BINANCE_BASE = "https://api.binance.com/api/v3/klines";
 export const SYMBOLS = ["BTCUSDT", "ETHUSDT"] as const;
 export const INTERVALS = ["15m", "1h", "4h", "1d"] as const;
+export const EXCHANGES = ["Binance", "Bybit", "OKX"] as const;
 export type SymbolName = (typeof SYMBOLS)[number];
 export type IntervalName = (typeof INTERVALS)[number];
+export type ExchangeName = (typeof EXCHANGES)[number];
 
 export type MarketAnalysis = {
+  exchange: ExchangeName;
   symbol: SymbolName;
   interval: IntervalName;
   price: number;
@@ -17,33 +19,70 @@ export type MarketAnalysis = {
   updatedAt: number;
 };
 
-function parseKline(row: unknown[]): Candle {
-  return { openTime: Number(row[0]), open: Number(row[1]), high: Number(row[2]), low: Number(row[3]), close: Number(row[4]), volume: Number(row[5]) };
-}
+const BINANCE_BASE = "https://api.binance.com";
+const BYBIT_BASE = "https://api.bybit.com";
+const OKX_BASE = "https://www.okx.com";
 
-export async function fetchCandles(symbol: SymbolName, interval: IntervalName, limit = 120): Promise<Candle[]> {
-  const url = `${BINANCE_BASE}?symbol=${symbol}&interval=${interval}&limit=${Math.max(50, Math.min(limit, 1000))}`;
+const toBybitInterval: Record<IntervalName, string> = { "15m": "15", "1h": "60", "4h": "240", "1d": "D" };
+const toOkxBar: Record<IntervalName, string> = { "15m": "15m", "1h": "1H", "4h": "4H", "1d": "1Dutc" };
+const toNumber = (value: unknown) => Number(value ?? 0);
+
+async function json<T>(url: string): Promise<T> {
   const response = await fetch(url, { headers: { accept: "application/json" } });
-  if (!response.ok) throw new Error(`Binance trả về HTTP ${response.status}`);
-  const data = await response.json() as unknown[][];
-  if (!Array.isArray(data) || data.length < 50) throw new Error(`Không đủ dữ liệu nến cho ${symbol} ${interval}`);
-  return data.map(parseKline);
+  if (!response.ok) throw new Error(`API market data HTTP ${response.status}`);
+  return response.json() as Promise<T>;
 }
 
-export async function fetch24hChange(symbol: SymbolName) {
-  const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`, { headers: { accept: "application/json" } });
-  if (!response.ok) return 0;
-  const data = await response.json() as { priceChangePercent?: string };
-  return Number(data.priceChangePercent ?? 0);
+async function fetchBinanceCandles(symbol: SymbolName, interval: IntervalName, limit: number) {
+  const rows = await json<unknown[][]>(`${BINANCE_BASE}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+  return rows.map(row => ({ openTime: toNumber(row[0]), open: toNumber(row[1]), high: toNumber(row[2]), low: toNumber(row[3]), close: toNumber(row[4]), volume: toNumber(row[5]) }));
 }
 
-export async function analyzeMarket(symbol: SymbolName, interval: IntervalName): Promise<MarketAnalysis> {
-  const [candles, change24h] = await Promise.all([fetchCandles(symbol, interval), fetch24hChange(symbol)]);
+async function fetchBybitCandles(symbol: SymbolName, interval: IntervalName, limit: number) {
+  const response = await json<{ retCode: number; result?: { list?: string[][] } }>(`${BYBIT_BASE}/v5/market/kline?category=spot&symbol=${symbol}&interval=${toBybitInterval[interval]}&limit=${limit}`);
+  if (response.retCode !== 0 || !response.result?.list) throw new Error("Bybit không trả về dữ liệu nến");
+  return response.result.list.slice().reverse().map(row => ({ openTime: toNumber(row[0]), open: toNumber(row[1]), high: toNumber(row[2]), low: toNumber(row[3]), close: toNumber(row[4]), volume: toNumber(row[5]) }));
+}
+
+async function fetchOkxCandles(symbol: SymbolName, interval: IntervalName, limit: number) {
+  const instId = symbol === "BTCUSDT" ? "BTC-USDT" : "ETH-USDT";
+  const response = await json<{ code: string; data?: string[][] }>(`${OKX_BASE}/api/v5/market/candles?instId=${instId}&bar=${toOkxBar[interval]}&limit=${limit}`);
+  if (response.code !== "0" || !response.data) throw new Error("OKX không trả về dữ liệu nến");
+  return response.data.slice().reverse().map(row => ({ openTime: toNumber(row[0]), open: toNumber(row[1]), high: toNumber(row[2]), low: toNumber(row[3]), close: toNumber(row[4]), volume: toNumber(row[5]) }));
+}
+
+export async function fetchExchangeCandles(exchange: ExchangeName, symbol: SymbolName, interval: IntervalName, limit = 120): Promise<Candle[]> {
+  const safeLimit = Math.max(50, Math.min(limit, 300));
+  const candles = exchange === "Binance" ? await fetchBinanceCandles(symbol, interval, safeLimit) : exchange === "Bybit" ? await fetchBybitCandles(symbol, interval, safeLimit) : await fetchOkxCandles(symbol, interval, safeLimit);
+  if (candles.length < 50) throw new Error(`${exchange} không trả đủ 50 nến cho ${symbol} ${interval}`);
+  return candles;
+}
+
+export async function fetch24hChange(exchange: ExchangeName, symbol: SymbolName) {
+  try {
+    if (exchange === "Binance") {
+      const data = await json<{ priceChangePercent?: string }>(`${BINANCE_BASE}/api/v3/ticker/24hr?symbol=${symbol}`);
+      return toNumber(data.priceChangePercent);
+    }
+    if (exchange === "Bybit") {
+      const data = await json<{ result?: { list?: Array<{ price24hPcnt?: string }> } }>(`${BYBIT_BASE}/v5/market/tickers?category=spot&symbol=${symbol}`);
+      return toNumber(data.result?.list?.[0]?.price24hPcnt) * 100;
+    }
+    const instId = symbol === "BTCUSDT" ? "BTC-USDT" : "ETH-USDT";
+    const data = await json<{ data?: Array<{ open24h?: string; last?: string }> }>(`${OKX_BASE}/api/v5/market/ticker?instId=${instId}`);
+    const item = data.data?.[0];
+    return item ? (toNumber(item.last) / toNumber(item.open24h) - 1) * 100 : 0;
+  } catch { return 0; }
+}
+
+export async function analyzeMarket(exchange: ExchangeName, symbol: SymbolName, interval: IntervalName): Promise<MarketAnalysis> {
+  const [candles, change24h] = await Promise.all([fetchExchangeCandles(exchange, symbol, interval), fetch24hChange(exchange, symbol)]);
   const indicators = analyzeCandles(candles);
-  return { symbol, interval, price: candles.at(-1)?.close ?? 0, change24h, candles, indicators, levels: tradeLevels(indicators, candles), updatedAt: Date.now() };
+  return { exchange, symbol, interval, price: candles.at(-1)?.close ?? 0, change24h, candles, indicators, levels: tradeLevels(indicators, candles), updatedAt: Date.now() };
 }
 
 export async function analyzeAllMarkets() {
-  const entries = await Promise.all(SYMBOLS.flatMap(symbol => INTERVALS.map(interval => analyzeMarket(symbol, interval))));
-  return entries;
+  const tasks = EXCHANGES.flatMap(exchange => SYMBOLS.flatMap(symbol => INTERVALS.map(interval => analyzeMarket(exchange, symbol, interval).catch(() => null))));
+  const results = await Promise.all(tasks);
+  return results.filter((item): item is MarketAnalysis => Boolean(item));
 }

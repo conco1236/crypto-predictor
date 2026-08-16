@@ -16,7 +16,7 @@ function responseText(response: Awaited<ReturnType<typeof invokeLLM>>) {
 }
 
 const analysisInput = z.array(z.object({
-  symbol: z.string(), interval: z.string(), price: z.number(), label: z.string(), score: z.number(),
+  exchange: z.string(), symbol: z.string(), interval: z.string(), price: z.number(), label: z.string(), score: z.number(),
   rsi: z.number(), adx: z.number(), atr: z.number(), volumeRatio: z.number(), entry: z.number(), takeProfit1: z.number(), stopLoss: z.number(), reasons: z.array(z.string()),
 }));
 
@@ -33,7 +33,7 @@ export const appRouter = router({
   market: router({
     all: protectedProcedure.query(async () => analyzeAllMarkets()),
     aiSummary: protectedProcedure.input(analysisInput).mutation(async ({ input }) => {
-      const compact = input.map(item => `${item.symbol} ${item.interval}: ${item.label} score ${item.score}, giá ${item.price}, RSI ${item.rsi.toFixed(1)}, ADX ${item.adx.toFixed(1)}, ATR ${item.atr.toFixed(2)}, volume x${item.volumeRatio.toFixed(2)}, Entry ${item.entry.toFixed(2)}, TP ${item.takeProfit1.toFixed(2)}, SL ${item.stopLoss.toFixed(2)}; ${item.reasons.join(", ")}`).join("\n");
+      const compact = input.map(item => `${item.exchange} — ${item.symbol} ${item.interval}: ${item.label} score ${item.score}, giá ${item.price}, RSI ${item.rsi.toFixed(1)}, ADX ${item.adx.toFixed(1)}, ATR ${item.atr.toFixed(2)}, volume x${item.volumeRatio.toFixed(2)}, Entry ${item.entry.toFixed(2)}, TP ${item.takeProfit1.toFixed(2)}, SL ${item.stopLoss.toFixed(2)}; ${item.reasons.join(", ")}`).join("\n");
       const result = await invokeLLM({
         messages: [
           { role: "system", content: "Bạn là chuyên gia phân tích thị trường crypto. Hãy trả lời hoàn toàn bằng tiếng Việt, ngắn gọn nhưng sâu sắc. Chỉ sử dụng dữ liệu được cung cấp, không bịa thêm giá hoặc tin tức. Nêu rõ xu hướng chính, sự đồng thuận đa khung, rủi ro và điều kiện vô hiệu hóa. Đây là thông tin tham khảo, không phải khuyến nghị đầu tư." },
@@ -46,10 +46,10 @@ export const appRouter = router({
     persist: protectedProcedure.mutation(async ({ ctx }) => {
       const analyses = await analyzeAllMarkets();
       for (const a of analyses) {
-        const previous = await getLastSignal(ctx.user.id, a.symbol, a.interval);
+        const previous = await getLastSignal(ctx.user.id, a.exchange, a.symbol, a.interval);
         const settings = await getTelegramSettings(ctx.user.id);
         const changed = !previous || previous.label !== a.indicators.label;
-        await saveSignalSnapshot({ userId: ctx.user.id, symbol: a.symbol, interval: a.interval, label: a.indicators.label, score: a.indicators.score, price: a.price, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify(a.indicators) });
+        await saveSignalSnapshot({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, price: a.price, label: a.indicators.label, score: a.indicators.score, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify(a.indicators) });
         if (settings?.enabled && Math.abs(a.indicators.score) >= settings.alertThreshold && changed && settings.botToken && settings.chatId) {
           await sendTelegramMessage(settings.botToken, settings.chatId, formatSignalAlert(a));
         }

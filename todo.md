@@ -18,3 +18,12 @@
 - [x] Bổ sung test cho logic Telegram và handler Heartbeat
 - [x] Chạy pnpm build và kiểm thử responsive mobile
 - [x] Bổ sung test trực tiếp cho refreshSignalsHandler: cron không hợp lệ, orphan taskUid và điều kiện vượt ngưỡng/đổi xu hướng
+- [x] Thêm adapter dữ liệu public cho Binance, Bybit và OKX
+- [x] Chuẩn hóa nến OHLCV đa sàn về cùng symbol, timeframe và timestamp UTC
+- [x] Thêm bộ lọc sàn và bảng so sánh giá/biến động/khối lượng
+- [x] Cập nhật AI, lịch sử và Telegram để ghi rõ nguồn sàn
+- [x] Bổ sung test adapter đa sàn và tạo checkpoint phiên bản đa sàn
+- [x] Hiển thị rõ trường exchange trong lịch sử tín hiệu để người dùng tra cứu theo nguồn sàn
+- [x] Tạo checkpoint mới sau các thay đổi đa sàn và xác nhận todo đã cập nhật
+- [ ] Tạo checkpoint mới sau khi thêm Binance/Bybit/OKX, lịch sử exchange và AI/Telegram đa sàn
+- [ ] Đọc lại todo.md sau khi tạo checkpoint để xác nhận trạng thái đã lưu đúng

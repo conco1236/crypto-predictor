@@ -1,0 +1,1 @@
+ALTER TABLE `signal_snapshots` ADD `exchange` varchar(20) DEFAULT 'Binance' NOT NULL;

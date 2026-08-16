@@ -57,7 +57,7 @@ export async function saveTelegramSettings(userId: number, data: { botToken: str
 }
 
 export async function saveSignalSnapshot(input: {
-  userId: number; symbol: string; interval: string; label: "Bullish" | "Bearish" | "Neutral"; score: number; price: number;
+  userId: number; exchange: string; symbol: string; interval: string; label: "Bullish" | "Bearish" | "Neutral"; score: number; price: number;
   entry: number; takeProfit1: number; takeProfit2: number; stopLoss: number; indicators: string; aiSummary?: string;
 }) {
   const db = await getDb();
@@ -71,9 +71,9 @@ export async function getSignalHistory(userId: number, limit = 40) {
   return db.select().from(signalSnapshots).where(eq(signalSnapshots.userId, userId)).orderBy(desc(signalSnapshots.createdAt)).limit(limit);
 }
 
-export async function getLastSignal(userId: number, symbol: string, interval: string) {
+export async function getLastSignal(userId: number, exchange: string, symbol: string, interval: string) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(signalSnapshots).where(and(eq(signalSnapshots.userId, userId), eq(signalSnapshots.symbol, symbol), eq(signalSnapshots.interval, interval))).orderBy(desc(signalSnapshots.createdAt)).limit(1);
+  const result = await db.select().from(signalSnapshots).where(and(eq(signalSnapshots.userId, userId), eq(signalSnapshots.exchange, exchange), eq(signalSnapshots.symbol, symbol), eq(signalSnapshots.interval, interval))).orderBy(desc(signalSnapshots.createdAt)).limit(1);
   return result[0];
 }

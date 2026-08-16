@@ -15,6 +15,13 @@
       "when": 1786863891570,
       "tag": "0001_eminent_doomsday",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786864748926,
+      "tag": "0002_rapid_red_hulk",
+      "breakpoints": true
     }
   ]
 }
