@@ -1,0 +1,1 @@
+ALTER TABLE `telegram_settings` ADD `sendMode` enum('all_candles','strong_only') DEFAULT 'all_candles' NOT NULL;

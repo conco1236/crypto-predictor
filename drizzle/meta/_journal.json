@@ -1,0 +1,90 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1786863722179,
+      "tag": "0000_skinny_doctor_faustus",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1786863891570,
+      "tag": "0001_eminent_doomsday",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786864748926,
+      "tag": "0002_rapid_red_hulk",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1786866003352,
+      "tag": "0003_bitter_living_tribunal",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1786872820547,
+      "tag": "0004_slow_mojo",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1786874183168,
+      "tag": "0005_faithful_grandmaster",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1786877870631,
+      "tag": "0006_loud_norman_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1786881746485,
+      "tag": "0007_pretty_cargill",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1786882375855,
+      "tag": "0008_common_speedball",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1786884131160,
+      "tag": "0009_busy_sugar_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1786891584589,
+      "tag": "0010_violet_hellcat",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1786893864796,
+      "tag": "0011_vengeful_agent_zero",
+      "breakpoints": true
+    }
+  ]
+}
