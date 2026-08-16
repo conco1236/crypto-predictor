@@ -10,11 +10,12 @@ describe("market indicators", () => {
     expect(ema([10, 12, 14], 3)).toEqual([10, 11, 12.5]);
   });
 
-  it("keeps RSI in the 0..100 range", () => {
+  it("keeps RSI in the 0..100 range and treats a flat market as neutral RSI", () => {
     const values = Array.from({ length: 40 }, (_, index) => 100 + index * 2);
     const result = rsi(values);
     expect(result.at(-1)).toBe(100);
     expect(result.every(value => value >= 0 && value <= 100)).toBe(true);
+    expect(rsi(Array.from({ length: 40 }, () => 100)).at(-1)).toBe(50);
   });
 
   it("classifies risk and returns explainable reasons", () => {
@@ -33,6 +34,9 @@ describe("market indicators", () => {
     expect(market.label).toBe("Bullish");
     expect(market.score).toBeGreaterThan(25);
     expect(market.resistance).toBeGreaterThan(market.support);
+    expect(market.confidence).toBeGreaterThanOrEqual(0);
+    expect(market.confidence).toBeLessThanOrEqual(100);
+    expect(market.confidenceReasons.length).toBeGreaterThan(0);
     const levels = tradeLevels(market, candlesFrom(Array.from({ length: 120 }, (_, index) => 100 + index * 1.5)));
     expect(levels.side).toBe("LONG");
     expect(levels.takeProfit1).toBeGreaterThan(levels.entry);

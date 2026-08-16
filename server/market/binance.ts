@@ -7,6 +7,13 @@ export type SymbolName = (typeof SYMBOLS)[number];
 export type IntervalName = (typeof INTERVALS)[number];
 export type ExchangeName = (typeof EXCHANGES)[number];
 
+export type MarketDataQuality = {
+  candleCount: number;
+  closedCandleCount: number;
+  sourceLatencyMs: number;
+  warnings: string[];
+};
+
 export type MarketAnalysis = {
   exchange: ExchangeName;
   symbol: SymbolName;
@@ -20,6 +27,7 @@ export type MarketAnalysis = {
   updatedAt: number;
   candleOpenTime: number;
   candleClosedAt: number;
+  dataQuality: MarketDataQuality;
 };
 
 const BINANCE_BASE = "https://api.binance.com";
@@ -31,9 +39,18 @@ const toOkxBar: Record<IntervalName, string> = { "15m": "15m", "1h": "1H", "4h":
 const toNumber = (value: unknown) => Number(value ?? 0);
 
 async function json<T>(url: string): Promise<T> {
-  const response = await fetch(url, { headers: { accept: "application/json" } });
-  if (!response.ok) throw new Error(`API market data HTTP ${response.status}`);
-  return response.json() as Promise<T>;
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const response = await fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(8_000) });
+      if (!response.ok) throw new Error(`API market data HTTP ${response.status}`);
+      return await response.json() as T;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Không thể lấy dữ liệu thị trường");
 }
 
 async function fetchBinanceCandles(symbol: SymbolName, interval: IntervalName, limit: number) {
@@ -87,13 +104,17 @@ export function isCandleClosed(openTime: number, interval: IntervalName, now = D
 }
 
 export async function analyzeMarket(exchange: ExchangeName, symbol: SymbolName, interval: IntervalName): Promise<MarketAnalysis> {
+  const startedAt = Date.now();
   const [candles, change24h] = await Promise.all([fetchExchangeCandles(exchange, symbol, interval), fetch24hChange(exchange, symbol)]);
   const closedCandles = candles.filter(candle => isCandleClosed(candle.openTime, interval));
   const analysisCandles = closedCandles.length >= 50 ? closedCandles : candles.slice(0, -1);
+  const warnings: string[] = [];
+  if (closedCandles.length < 50) warnings.push(`Chỉ có ${closedCandles.length} nến đã đóng`);
+  if (!Number.isFinite(change24h)) warnings.push("Không xác định được biến động 24h");
   const indicators = analyzeCandles(analysisCandles);
   const closedCandle = analysisCandles.at(-1) ?? candles.at(-1)!;
   const levels = tradeLevels(indicators, analysisCandles);
-  return { exchange, symbol, interval, price: candles.at(-1)?.close ?? 0, change24h, candles, indicators, levels, risk: riskAssessment(indicators, analysisCandles, levels), updatedAt: Date.now(), candleOpenTime: closedCandle.openTime, candleClosedAt: closedCandle.openTime + intervalToMs(interval) };
+  return { exchange, symbol, interval, price: candles.at(-1)?.close ?? 0, change24h, candles, indicators, levels, risk: riskAssessment(indicators, analysisCandles, levels), updatedAt: Date.now(), candleOpenTime: closedCandle.openTime, candleClosedAt: closedCandle.openTime + intervalToMs(interval), dataQuality: { candleCount: candles.length, closedCandleCount: closedCandles.length, sourceLatencyMs: Date.now() - startedAt, warnings } };
 }
 
 export async function analyzeAllMarkets() {

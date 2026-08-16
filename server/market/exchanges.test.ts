@@ -16,6 +16,15 @@ describe("multi-exchange market adapters", () => {
     expect(isCandleClosed(openTime, "15m", openTime + 899_999)).toBe(false);
     expect(isCandleClosed(openTime, "15m", openTime + 900_000)).toBe(true);
   });
+  it("retries a transient provider error before failing", async () => {
+    const rows = Array.from({ length: 50 }, (_, index) => candle(index + 1, 100 + index));
+    const fetchMock = vi.fn().mockRejectedValueOnce(new Error("temporary network error")).mockResolvedValueOnce(response(rows));
+    vi.stubGlobal("fetch", fetchMock);
+    const candles = await fetchExchangeCandles("Binance", "BTCUSDT", "15m", 50);
+    expect(candles).toHaveLength(50);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it.each([
     ["Binance", "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m&limit=50"],
     ["Bybit", "https://api.bybit.com/v5/market/kline?category=spot&symbol=BTCUSDT&interval=15&limit=50"],

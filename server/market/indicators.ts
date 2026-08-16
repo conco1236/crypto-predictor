@@ -35,6 +35,8 @@ export type IndicatorSnapshot = {
   score: number;
   label: TrendLabel;
   reasons: string[];
+  confidence: number;
+  confidenceReasons: string[];
 };
 
 const last = <T,>(values: T[]) => values[values.length - 1] as T;
@@ -64,12 +66,12 @@ export function rsi(values: number[], period = 14) {
   }
   let avgGain = gains / period;
   let avgLoss = losses / period;
-  result[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  result[period] = avgLoss === 0 ? (avgGain === 0 ? 50 : 100) : 100 - 100 / (1 + avgGain / avgLoss);
   for (let i = period + 1; i < values.length; i++) {
     const delta = values[i] - values[i - 1];
     avgGain = (avgGain * (period - 1) + Math.max(delta, 0)) / period;
     avgLoss = (avgLoss * (period - 1) + Math.max(-delta, 0)) / period;
-    result[i] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+    result[i] = avgLoss === 0 ? (avgGain === 0 ? 50 : 100) : 100 - 100 / (1 + avgGain / avgLoss);
   }
   return result;
 }
@@ -149,7 +151,17 @@ export function analyzeCandles(candles: Candle[]): IndicatorSnapshot {
   if (volumeRatio >= 1.2) reasons.push(`Khối lượng cao hơn trung bình ${((volumeRatio - 1) * 100).toFixed(0)}%`);
   score = clamp(Math.round(score), -100, 100);
   const label: TrendLabel = score >= 25 ? "Bullish" : score <= -25 ? "Bearish" : "Neutral";
-  return { ema9: e9, ema21: e21, ema50: e50, rsi: r, macd: m.line, macdSignal: m.signal, macdHistogram: m.histogram, bollingerUpper: b.upper, bollingerMiddle: b.middle, bollingerLower: b.lower, adx: adxValue, atr: a, volumeRatio, support, resistance, score, label, reasons };
+  const confidenceReasons: string[] = [];
+  const confirmations = [e9 > e21, e21 > e50, closes.at(-1)! > e50, m.histogram > 0, closes.at(-1)! > b.middle, adxValue >= 20, volumeRatio >= 1].filter(Boolean).length;
+  if (confirmations >= 5) confidenceReasons.push(`${confirmations}/7 điều kiện kỹ thuật đồng thuận`);
+  else if (confirmations >= 3) confidenceReasons.push(`${confirmations}/7 điều kiện kỹ thuật xác nhận`);
+  else confidenceReasons.push(`Chỉ ${confirmations}/7 điều kiện kỹ thuật xác nhận`);
+  if (adxValue >= 25) confidenceReasons.push(`ADX ${adxValue.toFixed(1)} hỗ trợ xu hướng`);
+  else confidenceReasons.push(`ADX ${adxValue.toFixed(1)} chưa xác nhận mạnh`);
+  if (volumeRatio >= 1.2) confidenceReasons.push("Khối lượng hỗ trợ tín hiệu");
+  else confidenceReasons.push("Khối lượng chưa tạo xác nhận mạnh");
+  const confidence = clamp(Math.round(35 + Math.abs(score) * 0.45 + Math.min(adxValue, 40) * 0.35 + Math.min(volumeRatio, 2) * 5), 0, 100);
+  return { ema9: e9, ema21: e21, ema50: e50, rsi: r, macd: m.line, macdSignal: m.signal, macdHistogram: m.histogram, bollingerUpper: b.upper, bollingerMiddle: b.middle, bollingerLower: b.lower, adx: adxValue, atr: a, volumeRatio, support, resistance, score, label, reasons, confidence, confidenceReasons };
 }
 
 export function riskAssessment(snapshot: IndicatorSnapshot, candles: Candle[], levels: { entry: number; stopLoss: number }): RiskAssessment {

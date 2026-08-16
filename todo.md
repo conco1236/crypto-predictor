@@ -148,3 +148,22 @@
 - [x] Tạo repository GitHub private crypto-trend-signal
 - [x] Commit và push mã nguồn hiện tại lên GitHub
 - [x] Xác minh remote, branch và URL repository
+- [ ] Kiểm tra Vercel CLI/access và trạng thái repository GitHub
+- [ ] Kiểm tra build/runtime compatibility của ứng dụng với Vercel
+- [ ] Chuẩn bị biến môi trường production cần thiết, không commit secrets
+- [ ] Tạo project Vercel với tên tinhieucoin và deploy
+- [ ] Kiểm tra domain tinhieucoin, runtime và bàn giao URL
+- [x] Kiểm toán toàn bộ data pipeline, indicator, scoring, risk, candle-close, WebSocket, Heartbeat, Telegram, database và UI
+- [x] Đánh giá các điểm có thể gây tín hiệu trễ, nhiễu, look-ahead bias hoặc thiếu dữ liệu
+- [ ] Thiết kế bộ đo lường signal quality và backtest không dùng dữ liệu giả
+- [ ] Nâng cấp tín hiệu, trạng thái, confidence, explainability và kiểm chứng lịch sử
+- [ ] Nâng cấp dashboard chuyên nghiệp và vận hành cảnh báo có thể quan sát
+- [x] Bổ sung test, migration cần thiết, performance check và responsive verification
+- [ ] Tạo báo cáo kiểm toán cùng checkpoint sau khi hoàn tất các nâng cấp được chọn
+- [x] Sửa RSI thị trường đi ngang và bổ sung confidence estimate có giải thích
+- [x] Thêm timeout/retry và cảnh báo chất lượng dữ liệu cho market adapter
+- [x] Hiển thị confidence/data quality trên SignalCard và Telegram alert
+- [x] Đọc trực tiếp và kiểm toán client/src/lib/liveSockets.ts cùng các điểm gắn live status trong UI, rồi cập nhật ghi chú audit để hoàn tất kiểm toán end-to-end WebSocket/data freshness
+- [ ] Lưu trữ freshness/latency từng ticker và hiển thị cảnh báo feed stale theo symbol
+- [ ] Tạo signal outcome tracking và backtest/calibration bằng dữ liệu nến thật, không dùng dữ liệu giả
+- [ ] Bổ sung dashboard quality metrics: hit rate, expectancy, max drawdown và phân tách theo asset/exchange/interval
