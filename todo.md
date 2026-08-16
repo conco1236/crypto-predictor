@@ -174,3 +174,4 @@
 - [x] Bổ sung phân tích AI tiếng Việt vào Telegram alert sau khi nến đóng, có fallback rõ ràng khi AI lỗi
 - [x] Kiểm thử idempotency, retry, delivery log và không gửi cho nến đang hình thành
 - [x] Kiểm tra runtime responsive và tạo checkpoint bàn giao cho luồng Telegram mới
+- [x] Sửa React warning `Each child in a list should have a unique key prop` phát sinh từ component Line và xác minh runtime không còn cảnh báo

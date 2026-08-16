@@ -18,8 +18,8 @@ export default function RiskHistorySparkline({ points, level }: Props) {
   const tooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload?: RiskHistorySparklinePoint }> }) => renderTooltip(active ? payload?.[0]?.payload : undefined);
   const focusedPoint = focusedIndex === null ? undefined : data[focusedIndex];
   const dot = (props: { cx?: number; cy?: number; index?: number; payload?: RiskHistorySparklinePoint }) => {
-    if (props.cx === undefined || props.cy === undefined || props.index === undefined || !props.payload) return <circle cx={0} cy={0} r={0} />;
-    return <circle cx={props.cx} cy={props.cy} r={3} fill={stroke} tabIndex={0} role="img" aria-label={getRiskHistoryPointAriaLabel(props.payload)} onFocus={() => setFocusedIndex(props.index!)} onBlur={() => setFocusedIndex(null)} onMouseEnter={() => setFocusedIndex(props.index!)} onMouseLeave={() => setFocusedIndex(current => current === props.index ? null : current)} className="cursor-pointer outline-none focus:stroke-white focus:stroke-2" />;
+    if (props.cx === undefined || props.cy === undefined || props.index === undefined || !props.payload) return <circle key={`risk-dot-empty-${props.index ?? "unknown"}`} cx={0} cy={0} r={0} />;
+    return <circle key={`risk-dot-${props.index}`} cx={props.cx} cy={props.cy} r={3} fill={stroke} tabIndex={0} role="img" aria-label={getRiskHistoryPointAriaLabel(props.payload)} onFocus={() => setFocusedIndex(props.index!)} onBlur={() => setFocusedIndex(null)} onMouseEnter={() => setFocusedIndex(props.index!)} onMouseLeave={() => setFocusedIndex(current => current === props.index ? null : current)} className="cursor-pointer outline-none focus:stroke-white focus:stroke-2" />;
   };
   return <div className="rounded-xl border border-white/5 bg-black/15 px-3 py-2" aria-label="Lịch sử điểm rủi ro theo nến; đường tham chiếu mức 33 và 66">
     <div className="mb-1 flex items-center justify-between"><p className="text-[10px] uppercase tracking-wider text-slate-500">Diễn biến điểm rủi ro</p><span className="text-[10px] text-slate-500">{points.length ? `${points.length} nến` : "Chưa có dữ liệu"}</span></div>

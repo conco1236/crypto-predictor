@@ -25,3 +25,7 @@ Live freshness is displayed per BTC and ETH ticker for each exchange, with a `Fe
 Heartbeat and manual persist paths now generate alerts only for the latest closed candle, retain the existing processed-candle idempotency and delivery retry behavior, and include exchange, timeframe, direction, score, confidence, current price, Entry, TP1, TP2, SL, indicators, candle-close time, data quality and source latency. The four supported intervals remain 15m, 1h, 4h and 1d.
 
 New alerts request a short Vietnamese AI interpretation from the server-side LLM using only the supplied technical context. If the model is unavailable or returns no content, the alert still sends with an explicit fallback message. AI text is HTML-escaped before Telegram delivery, and retries reuse the persisted delivery message rather than invoking AI again. Final verification after this change: TypeScript clean, 61/61 Vitest tests passing, scheduled Telegram tests passing, and production build successful.
+
+## React key warning fix
+
+The runtime warning was traced to the custom `dot` renderer passed to Recharts `Line` in `RiskHistorySparkline`. Each returned SVG circle now has a stable key derived from its data index, including the empty fallback circle. Targeted sparkline tests passed 10/10, the complete suite passed 61/61, TypeScript and production build passed, the dashboard preview rendered successfully, and the browser console contained no matching unique-key warning after HMR.
