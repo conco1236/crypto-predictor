@@ -255,3 +255,30 @@
 - [x] Thêm nút phóng to cho biểu đồ MACD và RSI với modal accessible
 - [x] Thêm lựa chọn hiển thị 30, 60 hoặc 120 nến bằng dữ liệu lịch sử thật
 - [x] Viết/cập nhật tests, kiểm tra tương tác responsive/theme/runtime và tạo checkpoint
+
+## User request: Trading Bot and chart workflow
+
+- [ ] Chốt phạm vi bot: paper trading hay live trading, CEX API và ví DEX
+- [ ] Tạo trang Trading Bot với cấu hình secrets an toàn, không lưu secret phía client
+- [ ] Dùng phân tích hiện có làm nguồn tín hiệu và hiển thị trạng thái bot rõ ràng
+- [ ] Thêm tooltip OHLC chi tiết theo nến đang hover trên biểu đồ giá
+- [ ] Thêm tải ảnh MACD/RSI từ modal phóng to
+- [ ] Lưu lựa chọn 30/60/120 nến để tự áp dụng lần sau
+- [ ] Viết/cập nhật tests, kiểm tra bảo mật/responsive/runtime và tạo checkpoint
+
+## Confirmed Trading Bot scope
+
+- [ ] Live trading CEX có xác nhận từng lệnh cho Binance và OKX
+- [ ] DEX giai đoạn đầu: EVM/BSC, ưu tiên Uniswap/PancakeSwap; Solana và Robinhood để phase sau
+- [ ] API key CEX chỉ quyền đọc/giao dịch, không quyền rút; secret lưu server-side
+- [ ] Ví DEX dùng signing flow an toàn, không lưu private key thô phía client
+- [ ] Thêm risk limits, confirmation modal, kill switch và audit log trước live execution
+
+## User request: credential input section
+
+- [x] Tạo route Trading Bot và mục nhập Binance API key/secret
+- [x] Tạo mục nhập OKX API key/secret/passphrase
+- [x] Tạo mục nhập ví DEX theo chain EVM/BSC, không yêu cầu private key thô phía client
+- [x] Hiển thị cảnh báo quyền Read/Trade, tắt Withdraw, xác nhận từng lệnh và kill switch
+- [ ] Kết nối lưu secrets server-side, validation và audit trạng thái kết nối
+- [x] Viết/cập nhật tests, kiểm tra responsive/runtime và tạo checkpoint

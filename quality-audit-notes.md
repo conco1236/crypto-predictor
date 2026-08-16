@@ -128,3 +128,9 @@ Light-mode `background`, `card`, `popover`, secondary, muted and accent tokens w
 Price, MACD and RSI charts in each SignalCard now share a stable Recharts `syncId`, so hover/cursor selection is synchronized to the same candle time. The indicator panel includes 30, 60 and 120 candle buttons; the price chart uses the same selected window. MACD/RSI can be opened in an accessible full-screen dialog with a close control and the synchronized cursor retained.
 
 Verification: TypeScript clean, 3 test files / 10 tests passed, dev server restarted cleanly and mobile preview rendered without visible overflow.
+
+## Trading Bot credential input section — 2026-08-16
+
+A dedicated `?page=trading-bot` page now provides separate input sections for Binance API key/secret, OKX API key/secret/passphrase, and a public EVM/BSC wallet address. Secret fields are masked with reveal controls, wallet input explicitly rejects the private-key workflow, and the page displays the intended safety boundaries: Read/Trade only, no withdrawals, per-order confirmation, maximum risk per order and a kill-switch-style enable toggle.
+
+The current form performs local validation messaging only and does not place orders. The server-side secrets request was rejected by the user, so no API credentials were stored and no exchange connection was activated. This is intentional: live execution remains disabled until credentials are supplied through the secure secrets flow and exchange-specific server integration is implemented. Verification: TypeScript clean, 4 test files / 13 tests passed, and mobile preview rendered the Trading Bot form without visible overflow.
