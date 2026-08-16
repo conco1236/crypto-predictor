@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isValidTelegramWebhookSecret } from "./services/telegramWebhook";
-import { buildPaperTradeInlineKeyboard } from "./services/telegram";
+import { buildPaperTradeInlineKeyboard, buildSandboxConfirmationKeyboard } from "./services/telegram";
 
 describe("Telegram paper webhook secret", () => {
   it("accepts the configured secret format", () => {
@@ -16,6 +16,12 @@ describe("Telegram paper webhook secret", () => {
     const callbacks = keyboard.inline_keyboard.flat().map(button => button.callback_data).filter(Boolean);
     expect(callbacks).toContain("paper:close:42");
     expect(callbacks).toContain("paper:pause");
-    expect(callbacks.every(value => value?.startsWith("paper:"))).toBe(true);
+    expect(callbacks).toContain("live:blocked");
+    expect(callbacks.filter(value => value?.startsWith("paper:")).length).toBe(2);
+    expect(callbacks).toContain("live:blocked");
+    expect(callbacks).not.toContain("live:execute");
+    const confirmation = buildSandboxConfirmationKeyboard("abc123");
+    const confirmationCallbacks = confirmation.inline_keyboard.flat().map(button => button.callback_data);
+    expect(confirmationCallbacks).toEqual(["sandbox:confirm:abc123", "sandbox:cancel:abc123"]);
   });
 });

@@ -5,9 +5,15 @@ import { invokeLLM } from "../_core/llm";
 export type TelegramSendResult = { ok: boolean; result?: { message_id?: number }; description?: string; error_code?: number };
 export type TelegramInlineKeyboard = { inline_keyboard: Array<Array<{ text: string; url?: string; callback_data?: string }>> };
 
+export function buildSandboxConfirmationKeyboard(token: string): TelegramInlineKeyboard {
+  return { inline_keyboard: [[{ text: "Xác nhận Sandbox Trade", callback_data: `sandbox:confirm:${token}` }, { text: "Hủy", callback_data: `sandbox:cancel:${token}` }]] };
+}
+
 export function buildPaperTradeInlineKeyboard(tradeId?: number, paused = false): TelegramInlineKeyboard {
   const controls = tradeId ? [{ text: "Đóng paper", callback_data: `paper:close:${tradeId}` }] : [{ text: "Mở paper", callback_data: "paper:open" }];
   controls.push({ text: paused ? "Tiếp tục bot" : "Tạm dừng bot", callback_data: paused ? "paper:resume" : "paper:pause" });
+  controls.push({ text: "Sandbox Trade", callback_data: "sandbox:request" });
+  controls.push({ text: "Live Trade · khóa", callback_data: "live:blocked" });
   return { inline_keyboard: [controls] };
 }
 
@@ -19,7 +25,8 @@ export function buildSignalInlineKeyboard(analysis: MarketAnalysis): TelegramInl
   const paperUrl = `${appUrl}/?page=trading-bot&focus=paper`;
   const pnlUrl = `${appUrl}/?page=trading-bot&focus=pnl`;
   const openPaper = { text: "Mở paper trade", callback_data: `paper:open:${analysis.exchange}:${analysis.symbol}:${analysis.interval}` };
-  return { inline_keyboard: [[{ text: "Xem biểu đồ", url: chartUrl }, { text: "Kiểm tra thanh khoản", url: liquidityUrl }], [openPaper, { text: "Mở Paper Bot", url: paperUrl }, { text: "Xem P&L", url: pnlUrl }]] };
+  const sandbox = { text: "Sandbox Trade", callback_data: `sandbox:request:${analysis.exchange}:${analysis.symbol}:${analysis.interval}` };
+  return { inline_keyboard: [[{ text: "Xem biểu đồ", url: chartUrl }, { text: "Kiểm tra thanh khoản", url: liquidityUrl }], [openPaper, sandbox, { text: "Mở Paper Bot", url: paperUrl }, { text: "Xem P&L", url: pnlUrl }]] };
 }
 
 export async function answerTelegramCallbackQuery(botToken: string, callbackQueryId: string, text: string) {

@@ -324,3 +324,22 @@
 - [x] Chỉ tác động paper trading, không gửi lệnh live
 - [x] Viết/cập nhật tests, kiểm tra runtime và cập nhật audit
 - [x] Tạo checkpoint handover
+
+## User request: secure live-trading confirmation flow
+
+- [ ] Gửi P&L chi tiết qua Telegram khi đóng paper/live lệnh
+- [ ] Thêm callback xác nhận hai bước cho live trade, mặc định không gửi lệnh nếu chưa đủ điều kiện
+- [ ] Nhập credentials CEX qua Secret Manager server-side, không qua Telegram
+- [ ] Kiểm tra quyền Trade và xác nhận Withdraw bị tắt trước khi live
+- [ ] Thêm nút Live Trade và risk checklist an toàn
+- [ ] Cô lập hoàn toàn paper/live execution và audit mọi thao tác
+- [ ] Viết/cập nhật tests, kiểm tra security/runtime và tạo checkpoint
+
+## User request: sandbox mock API for live-flow testing
+
+- [x] Tạo mock exchange adapter không gọi Binance/OKX thật
+- [x] Thêm xác nhận hai bước cho sandbox trade qua Telegram
+- [x] Gửi P&L chi tiết khi đóng sandbox trade
+- [x] Hiển thị nút Sandbox Trade thay cho live execution thật
+- [x] Audit rõ sandbox/live isolation và không dùng credentials thật
+- [x] Viết/cập nhật tests, kiểm tra runtime và tạo checkpoint

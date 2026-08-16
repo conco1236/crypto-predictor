@@ -164,3 +164,9 @@ Trading Bot equity/P&L now filters closed trades by BTC/ETH and 15m/1h/4h/1d. Th
 Signal alerts now include a callback button for opening a paper trade from the exact exchange/symbol/interval. Callback responses support closing a specific paper trade and pausing/resuming the paper refresh process. The webhook resolves the Telegram chat to the configured user before any database mutation, answers callback queries, and sends updated paper-only controls. Callback data is limited to `paper:*` actions and never contains API keys, wallet secrets, or live order instructions.
 
 Verification: TypeScript clean; 3 test files / 9 tests passed, including secret validation and callback keyboard assertions.
+
+## Sandbox mock API and two-step trade confirmation — 2026-08-16
+
+Telegram alerts now provide a `Sandbox Trade` callback using the real signal's exchange, asset and interval. The first click creates a short-lived pending confirmation; only the second `Xác nhận Sandbox Trade` callback creates a database-backed paper trade. `Hủy` removes the pending request. The mock adapter never calls Binance/OKX, never reads exchange credentials, and the existing `Live Trade · khóa` callback explicitly reports that real execution is disabled.
+
+Closing a simulated trade sends detailed Entry, Exit, directional P&L percentage and holding duration to Telegram. Verification: TypeScript clean, 3 test files / 9 tests passed, including callback keyboard and sandbox confirmation assertions.
