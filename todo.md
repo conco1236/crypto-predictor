@@ -390,3 +390,10 @@
 - [x] Thêm bảng so sánh kết quả dry-run scenario và không lưu secrets
 - [x] Kiểm thử export, scenario persistence, responsive/runtime và Pro-ready release checks
 - [x] Commit và push code mới lên repository GitHub đã cấu hình
+
+## User request: risk scenario templates
+
+- [x] Thêm mẫu Conservative, Balanced và Aggressive cho người dùng mới
+- [x] Cho phép nạp mẫu vào editor mà không ghi đè scenario đã lưu
+- [x] Kiểm thử template values, onboarding UI và regression
+- [x] Rà soát đề xuất nâng cấp tiếp theo cho sản phẩm
