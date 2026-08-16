@@ -106,3 +106,11 @@
 - [x] Lưu checkpoint mới sau tooltip sparkline và xác nhận version_id 64b98586
 - [x] Bổ sung test kỹ thuật responsive cho tooltip sparkline khi preview không có phiên đăng nhập
 - [x] Ghi nhận test DOM là bằng chứng tooltip mở thực tế trước checkpoint
+- [x] Thêm đường tham chiếu ngang tại risk 33 và 66 trên sparkline
+- [x] Bổ sung nhãn/ARIA và test xác minh hai reference lines
+- [x] Kiểm thử responsive, build và tạo checkpoint mới
+- [x] Gắn accessibility contract thực tế cho hai đường tham chiếu 33/66
+- [x] Bổ sung test component xác minh nhãn reference lines từ implementation thực tế
+- [x] Kiểm thử reference lines ở desktop/tablet/mobile và lưu checkpoint mới
+- [x] Bổ sung test responsive component ở các width desktop/tablet/mobile cho reference lines
+- [ ] Lưu checkpoint mới sau reference lines và cập nhật version_id

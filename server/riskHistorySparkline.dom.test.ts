@@ -8,11 +8,13 @@ vi.mock("recharts", () => ({
   LineChart: ({ data, children }: { data: Array<{ score: number; candleClosedAt: number }>; children: React.ReactNode }) => {
     const line = React.Children.toArray(children).find(child => React.isValidElement(child) && "dot" in child.props) as React.ReactElement<{ dot?: (props: any) => React.ReactElement; }> | undefined;
     const dot = line?.props.dot;
-    return React.createElement("svg", null, dot ? data.map((point, index) => React.createElement(React.Fragment, { key: index }, dot({ cx: 16 + index * 28, cy: 20 + index, index, payload: point }))) : null);
+    const references = React.Children.toArray(children).filter(child => React.isValidElement(child) && "y" in child.props).map(child => React.isValidElement(child) ? React.cloneElement(child) : null);
+    return React.createElement("svg", null, references, dot ? data.map((point, index) => React.createElement(React.Fragment, { key: index }, dot({ cx: 16 + index * 28, cy: 20 + index, index, payload: point }))) : null);
   },
   Line: (props: any) => React.createElement("line-test", props),
   Tooltip: () => null,
   YAxis: () => null,
+  ReferenceLine: ({ y, label }: { y: number; label?: { value?: string } }) => React.createElement("line", { "data-risk-reference": y, "aria-label": `Mức tham chiếu rủi ro ${label?.value ?? y}` }),
 }));
 
 import RiskHistorySparkline from "../client/src/components/RiskHistorySparkline";
@@ -33,6 +35,23 @@ describe("RiskHistorySparkline DOM interactions", () => {
     expect(screen.getByRole("tooltip").textContent).toContain("Nến đóng");
     expect(screen.getByRole("tooltip").className).toContain("max-w-[calc(100vw-2rem)]");
     expect(screen.getByRole("tooltip").className).toContain("break-words");
+  });
+
+  it("renders reference lines at risk 33 and 66 with an accessible implementation label", () => {
+    render(React.createElement(RiskHistorySparkline, { points, level: "medium" }));
+    expect(screen.getByLabelText(/đường tham chiếu mức 33 và 66/i)).toBeTruthy();
+    expect(document.querySelector('[data-risk-reference="33"]')?.getAttribute("aria-label")).toContain("33");
+    expect(document.querySelector('[data-risk-reference="66"]')?.getAttribute("aria-label")).toContain("66");
+  });
+
+  it("keeps both reference lines and accessible chart label across mobile, tablet and desktop widths", () => {
+    for (const width of [375, 768, 1280]) {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: width });
+      render(React.createElement(RiskHistorySparkline, { points, level: "medium" }));
+      expect(screen.getByLabelText(/đường tham chiếu mức 33 và 66/i)).toBeTruthy();
+      expect(document.querySelectorAll("[data-risk-reference]")).toHaveLength(2);
+      cleanup();
+    }
   });
 
   it("opens the same detailed tooltip when hovering an individual point", () => {
