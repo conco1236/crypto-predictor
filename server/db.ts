@@ -49,10 +49,11 @@ export async function getTelegramSettingsByTaskUid(taskUid: string) {
   return result[0];
 }
 
-export async function saveTelegramSettings(userId: number, data: { botToken: string; chatId: string; alertThreshold: number; enabled: number }, scheduleCronTaskUid?: string) {
+export async function saveTelegramSettings(userId: number, data: { botToken: string; chatId: string; alertThreshold: number; sendMode?: "all_candles" | "strong_only"; enabled: number }, scheduleCronTaskUid?: string) {
   const db = await getDb();
   if (!db) throw new Error("Database chưa sẵn sàng");
-  await db.insert(telegramSettings).values({ userId, ...data, scheduleCronTaskUid }).onDuplicateKeyUpdate({ set: { ...data, ...(scheduleCronTaskUid ? { scheduleCronTaskUid } : {}), updatedAt: new Date() } });
+  const sendMode = data.sendMode ?? "all_candles";
+  await db.insert(telegramSettings).values({ userId, ...data, sendMode, scheduleCronTaskUid }).onDuplicateKeyUpdate({ set: { ...data, sendMode, ...(scheduleCronTaskUid ? { scheduleCronTaskUid } : {}), updatedAt: new Date() } });
   return getTelegramSettings(userId);
 }
 

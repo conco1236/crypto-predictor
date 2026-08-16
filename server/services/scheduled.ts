@@ -53,7 +53,9 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
 
       let currentDelivery = delivery;
       if (!currentDelivery) {
-          const shouldAlert = Boolean(alertSettings.enabled && alertSettings.botToken && alertSettings.chatId);
+          const strongSignal = (a.signalStatus ?? "Trade") === "Trade" && (a.liquidity?.isValid ?? true) && Math.abs(a.indicators.score) >= alertSettings.alertThreshold;
+          const modeAllowsAlert = (alertSettings.sendMode ?? "all_candles") === "all_candles" || strongSignal;
+          const shouldAlert = Boolean(alertSettings.enabled && alertSettings.botToken && alertSettings.chatId && modeAllowsAlert);
         await saveSignalSnapshot({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, label: a.indicators.label, score: a.indicators.score, price: a.price, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, risk: a.risk, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
         saved++;
         if (shouldAlert) {

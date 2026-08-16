@@ -74,3 +74,11 @@ Migration `0007_pretty_cargill.sql` tạo `news_ai_settings`, `news_items` và `
 Heartbeat và manual persist hiện tạo delivery cho mọi nến mới đã đóng ở 15m/1h/4h/1d khi Telegram rule/token/chat đang bật. Các điều kiện score threshold, đổi label, signalStatus Trade và liquidity validity không còn chặn việc gửi; tin nhắn vẫn hiển thị rõ Trade/No Trade, lý do, cảnh báo thanh khoản, confidence và metadata. Candle đã xử lý vẫn bị bỏ qua, delivery failed vẫn retry theo message đã lưu và candle chỉ được mark sau khi gửi thành công.
 
 Regression mới chứng minh cả tín hiệu No Trade, điểm thấp và liquidity-invalid vẫn được gửi. Verification: scheduled tests 7/7, full regression suite đạt, TypeScript clean và production build successful.
+
+## Telegram send mode setting
+
+Migration 0009 adds `telegram_settings.sendMode` with enum values `all_candles` and `strong_only`, defaulting existing users to `all_candles` without destructive changes. The dashboard Telegram settings form now loads and saves the selected mode per user.
+
+`all_candles` sends every newly closed 15m/1h/4h/1d candle. `strong_only` requires Trade status, valid liquidity and absolute score at least the configured threshold. Both modes retain processed-candle idempotency, delivery retry and mark-after-success semantics; skipped strong-only candles are saved and marked processed to avoid repeat evaluation.
+
+Verification: schema migration applied successfully, TypeScript clean, targeted Telegram/Heartbeat tests passed, full regression suite and production build passed, and desktop dashboard preview remained intact.

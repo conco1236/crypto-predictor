@@ -18,6 +18,7 @@ export const telegramSettings = mysqlTable("telegram_settings", {
   botToken: varchar("botToken", { length: 255 }).notNull(),
   chatId: varchar("chatId", { length: 100 }).notNull(),
   alertThreshold: int("alertThreshold").default(50).notNull(),
+  sendMode: mysqlEnum("sendMode", ["all_candles", "strong_only"]).default("all_candles").notNull(),
   enabled: int("enabled").default(1).notNull(),
   scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

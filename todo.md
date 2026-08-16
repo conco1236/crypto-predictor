@@ -200,3 +200,6 @@
 - [x] Gửi Telegram cho mọi nến đã đóng ở 15m/1h/4h/1d, bao gồm Trade và No Trade, không phụ thuộc threshold/change
 - [x] Giữ chống gửi trùng, retry, delivery log và hiển thị rõ lý do No Trade/liquidity trong mọi tin
 - [x] Cập nhật test Heartbeat/manual, audit, build và checkpoint cho chế độ gửi mọi candle-close
+- [x] Thêm công tắc Telegram `Gửi mọi nến` hoặc `Chỉ tín hiệu mạnh`, lưu theo user
+- [x] Áp dụng chế độ gửi nhất quán cho Heartbeat và manual persist, giữ idempotency/retry
+- [x] Bổ sung test UI/API/alert conditions, audit, build và checkpoint

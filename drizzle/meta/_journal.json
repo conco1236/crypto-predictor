@@ -64,6 +64,13 @@
       "when": 1786882375855,
       "tag": "0008_common_speedball",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1786884131160,
+      "tag": "0009_busy_sugar_man",
+      "breakpoints": true
     }
   ]
 }

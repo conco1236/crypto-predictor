@@ -70,6 +70,18 @@ describe("refreshSignalsHandler", () => {
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ alerts: 1 }));
   });
 
+  it("skips a weak or No Trade candle in strong_only mode but marks it processed", async () => {
+    authenticateRequest.mockResolvedValue({ isCron: true, taskUid: "task-1" });
+    getSettings.mockResolvedValue({ userId: 7, enabled: 1, alertThreshold: 50, sendMode: "strong_only", botToken: "token", chatId: "chat" });
+    getProcessed.mockResolvedValue(undefined);
+    analyze.mockResolvedValue([{ ...market, indicators: { label: "Neutral", score: 49 }, signalStatus: "No Trade", liquidity: { isValid: true } }]);
+    const res = response();
+    await refreshSignalsHandler({} as any, res);
+    expect(send).not.toHaveBeenCalled();
+    expect(markProcessed).toHaveBeenCalledOnce();
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ alerts: 0, saved: 1 }));
+  });
+
   it("records a failed delivery without marking the candle, so the next Heartbeat can retry", async () => {
     authenticateRequest.mockResolvedValue({ isCron: true, taskUid: "task-1" });
     getSettings.mockResolvedValue({ userId: 7, enabled: 1, alertThreshold: 50, botToken: "token", chatId: "chat" });
