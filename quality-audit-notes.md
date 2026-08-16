@@ -96,3 +96,9 @@ Backtest được tinh gọn với các metric resolved/expired/horizon, bảng 
 Light mode now uses a neutral warm-white background, white cards, darker foreground/muted text and more visible borders. Signal cards use pale semantic fills instead of translucent saturated overlays: Bullish uses emerald-50, Bearish rose-50 and Neutral amber-50; dark mode retains the existing translucent palette. Risk badges and trend labels use dark light-mode text with dark-mode overrides, improving readability for Bearish/No Trade and risk indicators.
 
 TypeScript passed and targeted technical/UI tests passed: 4 files / 14 tests. A subsequent full QA attempt was terminated by the sandbox under high memory pressure before completion; the prior full suite/build had passed immediately before this CSS-only refresh. The existing production build warning concerns large frontend chunks, not a TypeScript or runtime error.
+
+## Motion and report export — 2026-08-16
+
+Global interactions now use short hover/active transitions for buttons, links, inputs and selects, while theme changes add a 220ms semantic color transition. The transition is gated by `prefers-reduced-motion: no-preference`. Backtest now exposes PNG export using `html-to-image` for the current real-data report region and PDF export through the browser print flow, with print CSS hiding controls and preserving report content.
+
+Verification: TypeScript passed; 4 targeted test files / 16 tests passed. The production Vite build was attempted twice and was terminated by the sandbox during chunk rendering / heap allocation due to high memory pressure. This is consistent with the existing large Mermaid/editor bundle warning; no TypeScript error was reported. The prior production build before this export-only change passed successfully.

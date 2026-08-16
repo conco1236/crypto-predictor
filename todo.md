@@ -219,3 +219,11 @@
 - [x] Điều chỉnh nền Light mode và semantic tokens để tránh nền xám/hồng nhạt gây mất tương phản
 - [x] Tăng độ tương phản chữ, badge, Risk Score, Bearish/No Trade và các panel cảnh báo trong Light mode
 - [x] Kiểm thử responsive, TypeScript, Vitest, build và tạo checkpoint handover
+
+## User request: motion and report export
+
+- [x] Bổ sung hover/micro-interactions mượt cho card, button, filter và navigation
+- [x] Thêm chuyển động chuyển Light/Dark mode, tôn trọng prefers-reduced-motion
+- [x] Thêm xuất báo cáo Backtest và phân tích hiện tại thành PDF từ dữ liệu thật
+- [x] Thêm xuất ảnh báo cáo Backtest/phân tích hiện tại từ vùng dashboard
+- [x] Viết/cập nhật tests, kiểm thử responsive/runtime và tạo checkpoint handover
