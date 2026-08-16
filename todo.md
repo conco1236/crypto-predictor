@@ -94,4 +94,4 @@
 - [x] Kiểm thử responsive chart, build và tạo checkpoint mới
 - [x] Thêm test group risk history theo exchange:symbol:interval để xác minh không trộn dữ liệu
 - [x] Thêm test contract cho procedure market.riskHistories
-- [ ] Tạo checkpoint mới cho sparkline risk history và xác nhận version_id
+- [x] Tạo checkpoint mới cho sparkline risk history và xác nhận version_id 0e247117
