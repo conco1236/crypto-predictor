@@ -6,6 +6,7 @@ import {
   getProcessedCandle,
   getTelegramDeliveryLog,
   getTelegramSettingsByTaskUid,
+  getTelegramAlertRules,
   markProcessedCandle,
   saveHeartbeatRun,
   saveSignalSnapshot,
@@ -13,6 +14,7 @@ import {
 } from "../db";
 import { analyzeAllMarkets } from "../market/binance";
 import { formatSignalAlert, sendTelegramMessage } from "./telegram";
+import { resolveAlertRule } from "./alertRules";
 
 export async function refreshSignalsHandler(req: Request, res: Response) {
   const startedAt = new Date();
@@ -29,10 +31,12 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
     const settings = await getTelegramSettingsByTaskUid(taskUid);
     if (!settings) return res.json({ ok: true, skipped: "orphan" });
     userId = settings.userId;
+    const rules = await getTelegramAlertRules(userId);
     const analyses = await analyzeAllMarkets();
 
     for (const a of analyses) {
       const key = { exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime };
+      const alertSettings = resolveAlertRule(settings, rules, { exchange: a.exchange, symbol: a.symbol, interval: a.interval });
       const delivery = await getTelegramDeliveryLog(userId, key);
       const processed = await getProcessedCandle(userId, a.exchange, a.symbol, a.interval);
       const newClosedCandle = !processed || processed.candleOpenTime < a.candleOpenTime;
@@ -42,11 +46,11 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
       let currentDelivery = delivery;
       if (!currentDelivery) {
         const previous = await getLastSignal(userId, a.exchange, a.symbol, a.interval);
-        const shouldAlert = Boolean(settings.enabled && Math.abs(a.indicators.score) >= settings.alertThreshold && (!previous || previous.label !== a.indicators.label) && settings.botToken && settings.chatId);
+          const shouldAlert = Boolean(alertSettings.enabled && Math.abs(a.indicators.score) >= alertSettings.alertThreshold && (!previous || previous.label !== a.indicators.label) && alertSettings.botToken && alertSettings.chatId);
         await saveSignalSnapshot({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, label: a.indicators.label, score: a.indicators.score, price: a.price, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, risk: a.risk, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
         saved++;
         if (shouldAlert) {
-          currentDelivery = await createTelegramDeliveryLog({ userId, taskUid, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt, label: a.indicators.label, score: a.indicators.score });
+            currentDelivery = await createTelegramDeliveryLog({ userId, taskUid, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt, label: a.indicators.label, score: a.indicators.score, message: formatSignalAlert(a) });
         } else {
           await markProcessedCandle({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
           continue;
@@ -57,12 +61,12 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
         await markProcessedCandle({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
         continue;
       }
-      if (!settings.enabled || !settings.botToken || !settings.chatId) { skipped++; continue; }
+      if (!alertSettings.enabled || !alertSettings.botToken || !alertSettings.chatId) { skipped++; continue; }
 
       const attempts = currentDelivery.attempts + 1;
       await updateTelegramDeliveryLog(currentDelivery.id, { status: "pending", attempts, lastError: null });
       try {
-        const result = await sendTelegramMessage(settings.botToken, settings.chatId, formatSignalAlert(a));
+        const result = await sendTelegramMessage(alertSettings.botToken, alertSettings.chatId, currentDelivery.message ?? formatSignalAlert(a));
         await updateTelegramDeliveryLog(currentDelivery.id, { status: "sent", telegramMessageId: result.result?.message_id ? String(result.result.message_id) : null, lastError: null, sentAt: new Date() });
         await markProcessedCandle({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
         alerts++;

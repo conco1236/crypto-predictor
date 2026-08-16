@@ -7,8 +7,9 @@ import { z } from "zod";
 import { parse as parseCookie } from "cookie";
 import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { analyzeAllMarkets } from "./market/binance";
-import { getHeartbeatHistory, getLastSignal, getProcessedCandle, getRiskHistories, getRiskHistory, getSignalHistory, getTelegramDeliveryHistory, getTelegramSettings, markProcessedCandle, saveSignalSnapshot, saveTelegramSettings } from "./db";
+import { createTelegramDeliveryLog, deleteTelegramAlertRule, getHeartbeatHistory, getHeartbeatHistoryPage, getLastSignal, getProcessedCandle, getRiskHistories, getRiskHistory, getSignalHistory, getTelegramAlertRules, getTelegramDeliveryHistory, getTelegramDeliveryHistoryPage, getTelegramDeliveryLog, getTelegramDeliveryLogById, getTelegramSettings, markProcessedCandle, saveSignalSnapshot, saveTelegramSettings, updateTelegramDeliveryLog, upsertTelegramAlertRule } from "./db";
 import { formatSignalAlert, sendTelegramMessage } from "./services/telegram";
+import { resolveAlertRule } from "./services/alertRules";
 
 function responseText(response: Awaited<ReturnType<typeof invokeLLM>>) {
   const content = response.choices?.[0]?.message?.content;
@@ -45,19 +46,38 @@ export const appRouter = router({
     }),
     persist: protectedProcedure.mutation(async ({ ctx }) => {
       const analyses = await analyzeAllMarkets();
+      const settings = await getTelegramSettings(ctx.user.id);
+      const rules = await getTelegramAlertRules(ctx.user.id);
+      let saved = 0;
+      let alerts = 0;
       for (const a of analyses) {
         const processed = await getProcessedCandle(ctx.user.id, a.exchange, a.symbol, a.interval);
         if (processed && processed.candleOpenTime >= a.candleOpenTime) continue;
         const previous = await getLastSignal(ctx.user.id, a.exchange, a.symbol, a.interval);
-        const settings = await getTelegramSettings(ctx.user.id);
+        const alertSettings = settings ? resolveAlertRule(settings, rules, { exchange: a.exchange, symbol: a.symbol, interval: a.interval }) : undefined;
         const changed = !previous || previous.label !== a.indicators.label;
         await saveSignalSnapshot({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, price: a.price, label: a.indicators.label, score: a.indicators.score, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, risk: a.risk, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
-        await markProcessedCandle({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
-        if (settings?.enabled && Math.abs(a.indicators.score) >= settings.alertThreshold && changed && settings.botToken && settings.chatId) {
-          await sendTelegramMessage(settings.botToken, settings.chatId, formatSignalAlert(a));
+        saved++;
+        const shouldAlert = Boolean(alertSettings?.enabled && Math.abs(a.indicators.score) >= alertSettings.alertThreshold && changed && alertSettings.botToken && alertSettings.chatId);
+        if (!shouldAlert) {
+          await markProcessedCandle({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
+          continue;
+        }
+        const message = formatSignalAlert(a);
+        const delivery = await createTelegramDeliveryLog({ userId: ctx.user.id, exchange: a.exchange, interval: a.interval, symbol: a.symbol, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt, label: a.indicators.label, score: a.indicators.score, message });
+        const attempts = delivery?.attempts ?? 0;
+        await updateTelegramDeliveryLog(delivery!.id, { status: "pending", attempts: attempts + 1, lastError: null });
+        try {
+          const result = await sendTelegramMessage(alertSettings!.botToken, alertSettings!.chatId, message);
+          await updateTelegramDeliveryLog(delivery!.id, { status: "sent", telegramMessageId: result.result?.message_id ? String(result.result.message_id) : null, lastError: null, sentAt: new Date() });
+          await markProcessedCandle({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
+          alerts++;
+        } catch (error) {
+          const messageError = error instanceof Error ? error.message : String(error);
+          await updateTelegramDeliveryLog(delivery!.id, { status: "failed", lastError: messageError });
         }
       }
-      return { saved: analyses.length, updatedAt: Date.now() };
+      return { saved, alerts, updatedAt: Date.now() };
     }),
     history: protectedProcedure.input(z.object({ limit: z.number().min(1).max(100).default(40) })).query(({ ctx, input }) => getSignalHistory(ctx.user.id, input.limit)),
     riskHistory: protectedProcedure.input(z.object({ exchange: z.string().min(1), symbol: z.string().min(1), interval: z.string().min(1), limit: z.number().min(2).max(60).default(24) })).query(({ ctx, input }) => getRiskHistory(ctx.user.id, input.exchange, input.symbol, input.interval, input.limit)),
@@ -98,8 +118,32 @@ export const appRouter = router({
         throw error;
       }
     }),
-    deliveryHistory: protectedProcedure.input(z.object({ limit: z.number().min(1).max(100).default(30) }).optional()).query(({ ctx, input }) => getTelegramDeliveryHistory(ctx.user.id, input?.limit ?? 30)),
-    heartbeatHistory: protectedProcedure.input(z.object({ limit: z.number().min(1).max(100).default(20) }).optional()).query(({ ctx, input }) => getHeartbeatHistory(ctx.user.id, input?.limit ?? 20)),
+    deliveryHistory: protectedProcedure.input(z.object({ limit: z.number().min(1).max(100).default(30), status: z.enum(["pending", "sent", "failed"]).optional(), symbol: z.string().optional(), exchange: z.string().optional(), interval: z.string().optional() }).optional()).query(({ ctx, input }) => getTelegramDeliveryHistory(ctx.user.id, input?.limit ?? 30, input)),
+    heartbeatHistory: protectedProcedure.input(z.object({ limit: z.number().min(1).max(100).default(20), status: z.enum(["success", "failed"]).optional() }).optional()).query(({ ctx, input }) => getHeartbeatHistory(ctx.user.id, input?.limit ?? 20, input?.status)),
+    deliveryHistoryPage: protectedProcedure.input(z.object({ page: z.number().int().min(1).default(1), pageSize: z.number().int().min(5).max(50).default(20), status: z.enum(["pending", "sent", "failed"]).optional(), symbol: z.string().optional(), exchange: z.string().optional(), interval: z.string().optional() }).optional()).query(({ ctx, input }) => getTelegramDeliveryHistoryPage(ctx.user.id, input?.page ?? 1, input?.pageSize ?? 20, input)),
+    heartbeatHistoryPage: protectedProcedure.input(z.object({ page: z.number().int().min(1).default(1), pageSize: z.number().int().min(5).max(50).default(20), status: z.enum(["success", "failed"]).optional() }).optional()).query(({ ctx, input }) => getHeartbeatHistoryPage(ctx.user.id, input?.page ?? 1, input?.pageSize ?? 20, input?.status)),
+    rules: protectedProcedure.query(({ ctx }) => getTelegramAlertRules(ctx.user.id)),
+    saveRule: protectedProcedure.input(z.object({ id: z.number().int().positive().optional(), symbol: z.string().min(1).max(20), exchange: z.string().min(1).max(20), interval: z.string().min(1).max(10), alertThreshold: z.number().int().min(25).max(100), enabled: z.boolean() })).mutation(({ ctx, input }) => upsertTelegramAlertRule(ctx.user.id, { symbol: input.symbol, exchange: input.exchange, interval: input.interval, alertThreshold: input.alertThreshold, enabled: input.enabled ? 1 : 0 })),
+    deleteRule: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => { await deleteTelegramAlertRule(ctx.user.id, input.id); return { ok: true }; }),
+    retryDelivery: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const delivery = await getTelegramDeliveryLogById(ctx.user.id, input.id);
+      if (!delivery) throw new Error("Không tìm thấy bản ghi delivery");
+      if (delivery.status === "sent") return delivery;
+      if (!delivery.message) throw new Error("Bản ghi cũ không có nội dung để gửi lại");
+      const settings = await getTelegramSettings(ctx.user.id);
+      if (!settings?.enabled || !settings.botToken || !settings.chatId) throw new Error("Telegram chưa được bật hoặc thiếu cấu hình");
+      const attempts = delivery.attempts + 1;
+      await updateTelegramDeliveryLog(delivery.id, { status: "pending", attempts, lastError: null });
+      try {
+        const result = await sendTelegramMessage(settings.botToken, settings.chatId, delivery.message);
+        await updateTelegramDeliveryLog(delivery.id, { status: "sent", telegramMessageId: result.result?.message_id ? String(result.result.message_id) : null, lastError: null, sentAt: new Date() });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await updateTelegramDeliveryLog(delivery.id, { status: "failed", lastError: message });
+        throw new Error(message);
+      }
+      return getTelegramDeliveryLogById(ctx.user.id, delivery.id);
+    }),
   }),
 });
 

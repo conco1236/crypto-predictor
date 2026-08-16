@@ -36,6 +36,13 @@
       "when": 1786872820547,
       "tag": "0004_slow_mojo",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1786874183168,
+      "tag": "0005_faithful_grandmaster",
+      "breakpoints": true
     }
   ]
 }

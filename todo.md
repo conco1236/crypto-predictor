@@ -126,3 +126,20 @@
 - [x] Người dùng bấm Test Telegram sau khi live; runtime ghi status=sent và không ghi token
 - [x] Thêm test trực tiếp cho getTelegramDeliveryHistory và getHeartbeatHistory bằng mock/select contract
 - [x] Thêm test create delivery log khi candle key đã tồn tại để xác minh idempotency/unique handling
+- [x] Kiểm tra toàn bộ bảng database, migration, indexes và dữ liệu Telegram/Heartbeat hiện tại
+- [x] Kiểm tra Heartbeat production, delivery status, lỗi và điều kiện retry
+- [x] Thiết kế cấu hình cảnh báo theo user + asset + exchange + interval
+- [x] Triển khai nút retry thủ công cho delivery failed/pending có kiểm tra quyền sở hữu
+- [x] Triển khai trang nhật ký vận hành chi tiết với filter và phân trang giới hạn
+- [x] Thêm API/query/mutation và UI quản lý cấu hình cảnh báo linh hoạt
+- [x] Viết test schema contract, quyền user, retry idempotency và cấu hình đa chiều
+- [x] Kiểm thử responsive, production migration, runtime và tạo checkpoint mới
+- [x] Thêm phân trang thực sự cho delivery và Heartbeat history với page/limit và nút trước/sau
+- [x] Bổ sung test âm quyền sở hữu cho retryDelivery/deleteRule/saveRule
+- [x] Bổ sung test CRUD rule và manual retry idempotency không tạo trạng thái sai/trùng
+- [x] Bổ sung test ownership contract cho deleteRule và saveRule theo ctx.user
+- [x] Bổ sung test đọc rules và upsert/update cùng composite scope
+- [x] Bổ sung test retry failed nhiều lần không tạo delivery record mới
+- [x] Bổ sung test retry cùng delivery failed nhiều lần: không tạo record mới, chỉ tăng attempts và cập nhật trạng thái
+- [ ] Lưu checkpoint/publish sau thay đổi cuối và xác minh runtime production của pagination, retry và rule config
+- [x] Assert retry failed cùng delivery ID tăng attempts 1→2→3 và chuyển pending→failed→pending→sent

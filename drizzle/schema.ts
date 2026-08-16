@@ -24,6 +24,18 @@ export const telegramSettings = mysqlTable("telegram_settings", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => ({ userUnique: uniqueIndex("telegram_settings_user_unique").on(table.userId), taskIndex: index("telegram_settings_task_uid_idx").on(table.scheduleCronTaskUid) }));
 
+export const telegramAlertRules = mysqlTable("telegram_alert_rules", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  symbol: varchar("symbol", { length: 20 }).notNull().default("*"),
+  exchange: varchar("exchange", { length: 20 }).notNull().default("*"),
+  interval: varchar("interval", { length: 10 }).notNull().default("*"),
+  alertThreshold: int("alertThreshold").default(50).notNull(),
+  enabled: int("enabled").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({ ruleUnique: uniqueIndex("telegram_alert_rules_scope_unique").on(table.userId, table.symbol, table.exchange, table.interval), userIndex: index("telegram_alert_rules_user_idx").on(table.userId, table.updatedAt) }));
+
 export const signalProcessingState = mysqlTable("signal_processing_state", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -45,6 +57,7 @@ export const telegramDeliveryLogs = mysqlTable("telegram_delivery_logs", {
   candleClosedAt: double("candleClosedAt").notNull(),
   label: mysqlEnum("label", ["Bullish", "Bearish", "Neutral"]).notNull(),
   score: int("score").notNull(),
+  message: text("message"),
   status: mysqlEnum("status", ["pending", "sent", "failed"]).default("pending").notNull(),
   attempts: int("attempts").default(0).notNull(),
   telegramMessageId: varchar("telegramMessageId", { length: 64 }),
@@ -89,6 +102,7 @@ export const signalSnapshots = mysqlTable("signal_snapshots", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type TelegramSetting = typeof telegramSettings.$inferSelect;
+export type TelegramAlertRule = typeof telegramAlertRules.$inferSelect;
 export type SignalSnapshot = typeof signalSnapshots.$inferSelect;
 export type TelegramDeliveryLog = typeof telegramDeliveryLogs.$inferSelect;
 export type HeartbeatRun = typeof heartbeatRuns.$inferSelect;

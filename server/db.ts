@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/mysql2";
 import { and, desc, eq } from "drizzle-orm";
-import { heartbeatRuns, InsertUser, signalProcessingState, signalSnapshots, telegramDeliveryLogs, telegramSettings, users } from "../drizzle/schema";
+import { heartbeatRuns, InsertUser, signalProcessingState, signalSnapshots, telegramAlertRules, telegramDeliveryLogs, telegramSettings, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -56,6 +56,32 @@ export async function saveTelegramSettings(userId: number, data: { botToken: str
   return getTelegramSettings(userId);
 }
 
+export async function getTelegramAlertRules(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(telegramAlertRules).where(eq(telegramAlertRules.userId, userId)).orderBy(desc(telegramAlertRules.updatedAt));
+}
+
+export async function getTelegramAlertRule(userId: number, scope: { symbol: string; exchange: string; interval: string }) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(telegramAlertRules).where(and(eq(telegramAlertRules.userId, userId), eq(telegramAlertRules.symbol, scope.symbol), eq(telegramAlertRules.exchange, scope.exchange), eq(telegramAlertRules.interval, scope.interval))).limit(1);
+  return result[0];
+}
+
+export async function upsertTelegramAlertRule(userId: number, input: { symbol: string; exchange: string; interval: string; alertThreshold: number; enabled: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database chưa sẵn sàng");
+  await db.insert(telegramAlertRules).values({ userId, ...input }).onDuplicateKeyUpdate({ set: { alertThreshold: input.alertThreshold, enabled: input.enabled, updatedAt: new Date() } });
+  return getTelegramAlertRule(userId, input);
+}
+
+export async function deleteTelegramAlertRule(userId: number, id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(telegramAlertRules).where(and(eq(telegramAlertRules.userId, userId), eq(telegramAlertRules.id, id)));
+}
+
 export async function getTelegramDeliveryLog(userId: number, input: { exchange: string; symbol: string; interval: string; candleOpenTime: number }) {
   const db = await getDb();
   if (!db) return undefined;
@@ -67,11 +93,11 @@ export function clampHistoryLimit(value: number | undefined, fallback: number, m
   return Math.min(Math.max(value ?? fallback, 1), maximum);
 }
 
-export function buildTelegramDeliveryRecord(input: { userId: number; taskUid?: string; exchange: string; symbol: string; interval: string; candleOpenTime: number; candleClosedAt: number; label: "Bullish" | "Bearish" | "Neutral"; score: number }) {
-  return { ...input, taskUid: input.taskUid ?? null, status: "pending" as const, attempts: 0 };
+export function buildTelegramDeliveryRecord(input: { userId: number; taskUid?: string; exchange: string; symbol: string; interval: string; candleOpenTime: number; candleClosedAt: number; label: "Bullish" | "Bearish" | "Neutral"; score: number; message?: string }) {
+  return { ...input, taskUid: input.taskUid ?? null, message: input.message ?? null, status: "pending" as const, attempts: 0 };
 }
 
-export async function createTelegramDeliveryLog(input: { userId: number; taskUid?: string; exchange: string; symbol: string; interval: string; candleOpenTime: number; candleClosedAt: number; label: "Bullish" | "Bearish" | "Neutral"; score: number }) {
+export async function createTelegramDeliveryLog(input: { userId: number; taskUid?: string; exchange: string; symbol: string; interval: string; candleOpenTime: number; candleClosedAt: number; label: "Bullish" | "Bearish" | "Neutral"; score: number; message?: string }) {
   const db = await getDb();
   if (!db) throw new Error("Database chưa sẵn sàng");
   const existing = await getTelegramDeliveryLog(input.userId, input);
@@ -80,16 +106,42 @@ export async function createTelegramDeliveryLog(input: { userId: number; taskUid
   return getTelegramDeliveryLog(input.userId, input);
 }
 
+export async function getTelegramDeliveryLogById(userId: number, id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(telegramDeliveryLogs).where(and(eq(telegramDeliveryLogs.userId, userId), eq(telegramDeliveryLogs.id, id))).limit(1);
+  return result[0];
+}
+
 export async function updateTelegramDeliveryLog(id: number, data: { status: "pending" | "sent" | "failed"; attempts?: number; telegramMessageId?: string | null; lastError?: string | null; sentAt?: Date | null }) {
   const db = await getDb();
   if (!db) return;
   await db.update(telegramDeliveryLogs).set(data).where(eq(telegramDeliveryLogs.id, id));
 }
 
-export async function getTelegramDeliveryHistory(userId: number, limit = 30) {
+export async function getTelegramDeliveryHistory(userId: number, limit = 30, filters?: { status?: "pending" | "sent" | "failed"; symbol?: string; exchange?: string; interval?: string }) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(telegramDeliveryLogs).where(eq(telegramDeliveryLogs.userId, userId)).orderBy(desc(telegramDeliveryLogs.createdAt)).limit(clampHistoryLimit(limit, 30));
+  const conditions = [eq(telegramDeliveryLogs.userId, userId)];
+  if (filters?.status) conditions.push(eq(telegramDeliveryLogs.status, filters.status));
+  if (filters?.symbol) conditions.push(eq(telegramDeliveryLogs.symbol, filters.symbol));
+  if (filters?.exchange) conditions.push(eq(telegramDeliveryLogs.exchange, filters.exchange));
+  if (filters?.interval) conditions.push(eq(telegramDeliveryLogs.interval, filters.interval));
+  return db.select().from(telegramDeliveryLogs).where(and(...conditions)).orderBy(desc(telegramDeliveryLogs.createdAt)).limit(clampHistoryLimit(limit, 30));
+}
+
+export async function getTelegramDeliveryHistoryPage(userId: number, page = 1, pageSize = 20, filters?: { status?: "pending" | "sent" | "failed"; symbol?: string; exchange?: string; interval?: string }) {
+  const db = await getDb();
+  if (!db) return { items: [], hasMore: false };
+  const conditions = [eq(telegramDeliveryLogs.userId, userId)];
+  if (filters?.status) conditions.push(eq(telegramDeliveryLogs.status, filters.status));
+  if (filters?.symbol) conditions.push(eq(telegramDeliveryLogs.symbol, filters.symbol));
+  if (filters?.exchange) conditions.push(eq(telegramDeliveryLogs.exchange, filters.exchange));
+  if (filters?.interval) conditions.push(eq(telegramDeliveryLogs.interval, filters.interval));
+  const safePage = Math.max(page, 1);
+  const safeSize = clampHistoryLimit(pageSize, 20, 50);
+  const rows = await db.select().from(telegramDeliveryLogs).where(and(...conditions)).orderBy(desc(telegramDeliveryLogs.createdAt)).limit(safeSize + 1).offset((safePage - 1) * safeSize);
+  return { items: rows.slice(0, safeSize), hasMore: rows.length > safeSize };
 }
 
 export async function saveHeartbeatRun(input: { userId: number; taskUid: string; status: "success" | "failed"; savedCount?: number; alertCount?: number; skippedCount?: number; durationMs: number; error?: string | null; startedAt: Date; finishedAt: Date }) {
@@ -98,10 +150,23 @@ export async function saveHeartbeatRun(input: { userId: number; taskUid: string;
   await db.insert(heartbeatRuns).values({ ...input, savedCount: input.savedCount ?? 0, alertCount: input.alertCount ?? 0, skippedCount: input.skippedCount ?? 0, error: input.error ?? null });
 }
 
-export async function getHeartbeatHistory(userId: number, limit = 20) {
+export async function getHeartbeatHistoryPage(userId: number, page = 1, pageSize = 20, status?: "success" | "failed") {
+  const db = await getDb();
+  if (!db) return { items: [], hasMore: false };
+  const conditions = [eq(heartbeatRuns.userId, userId)];
+  if (status) conditions.push(eq(heartbeatRuns.status, status));
+  const safePage = Math.max(page, 1);
+  const safeSize = clampHistoryLimit(pageSize, 20, 50);
+  const rows = await db.select().from(heartbeatRuns).where(and(...conditions)).orderBy(desc(heartbeatRuns.startedAt)).limit(safeSize + 1).offset((safePage - 1) * safeSize);
+  return { items: rows.slice(0, safeSize), hasMore: rows.length > safeSize };
+}
+
+export async function getHeartbeatHistory(userId: number, limit = 20, status?: "success" | "failed") {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(heartbeatRuns).where(eq(heartbeatRuns.userId, userId)).orderBy(desc(heartbeatRuns.startedAt)).limit(clampHistoryLimit(limit, 20));
+  const conditions = [eq(heartbeatRuns.userId, userId)];
+  if (status) conditions.push(eq(heartbeatRuns.status, status));
+  return db.select().from(heartbeatRuns).where(and(...conditions)).orderBy(desc(heartbeatRuns.startedAt)).limit(clampHistoryLimit(limit, 20));
 }
 
 export async function getProcessedCandle(userId: number, exchange: string, symbol: string, interval: string) {
