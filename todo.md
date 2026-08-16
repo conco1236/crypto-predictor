@@ -35,4 +35,14 @@
 - [x] Bổ sung tests nến đóng, chống trùng và checkpoint phiên bản mới
 - [x] Hiển thị timestamp cập nhật lần cuối động trên dashboard dựa trên dữ liệu refetch
 - [x] Thêm test trường hợp candleOpenTime đã xử lý thì Heartbeat bỏ qua snapshot và Telegram
-- [ ] Tạo checkpoint sau thay đổi continuous update/candle-close và đọc lại todo.md
+- [x] Tạo checkpoint sau thay đổi continuous update/candle-close và đọc lại todo.md
+- [x] Tạo WebSocket manager cho Binance, Bybit và OKX với trạng thái connected/reconnecting/error
+- [x] Chuẩn hóa ticker live và phát snapshot giá mỗi 5 giây cho frontend
+- [x] Thêm heartbeat, timeout, exponential backoff và jitter khi reconnect
+- [x] Kết nối live price vào dashboard, tách khỏi tín hiệu nến đã đóng
+- [x] Hiển thị trạng thái kết nối và thời điểm cập nhật live của từng sàn
+- [x] Bổ sung test adapter WebSocket, reconnect, timeout và dữ liệu ticker
+- [ ] Tạo checkpoint mới sau khi hoàn tất WebSocket live
+- [x] Thêm watchdog timeout cho từng WebSocket/feed; nếu không có message/pong trong ngưỡng thì đóng socket và reconnect
+- [x] Hiển thị panel trạng thái live theo từng sàn với connected/reconnecting/error và timestamp cập nhật riêng
+- [x] Bổ sung test Bybit/OKX ticker normalization và nhánh timeout/stale connection dẫn tới reconnect
