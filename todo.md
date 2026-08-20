@@ -466,3 +466,9 @@
 - [x] Kiểm tra contract snapshot lịch sử và chuẩn hóa confidence timeline theo asset/khung
 - [x] Xây biểu đồ confidence với bộ lọc BTC/ETH, 15m/1h/4h/1d và decision context
 - [x] Viết regression tests, kiểm tra responsive và phát hành checkpoint
+
+## User request: abrupt confidence-drop visual alert
+
+- [x] Xây logic phát hiện confidence giảm đột ngột giữa hai nến theo ngưỡng minh bạch
+- [x] Thêm marker, annotation và bảng decision context cho confidence drop trên timeline
+- [x] Kiểm thử regression, responsive và phát hành checkpoint

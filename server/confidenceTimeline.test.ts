@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { parseConfidenceSnapshot } from "./db";
 import * as db from "./db";
 import { appRouter } from "./routers";
-import { summarizeConfidenceTimeline } from "../client/src/lib/confidenceTimeline";
+import { ABRUPT_CONFIDENCE_DROP_POINTS, annotateConfidenceDrops, summarizeConfidenceTimeline } from "../client/src/lib/confidenceTimeline";
 
 describe("confidence timeline contracts", () => {
   const createdAt = new Date("2026-08-20T00:00:00.000Z");
@@ -11,7 +11,12 @@ describe("confidence timeline contracts", () => {
     expect(parseConfidenceSnapshot({ label: "Neutral", createdAt, indicators: JSON.stringify({ signalQuality: { penalty: 20 } }) })).toBeNull();
   });
   it("summarizes only supplied timeline observations", () => {
-    expect(summarizeConfidenceTimeline([{ candleClosedAt: 1, confidence: 80, penalty: 0, isTradeEligible: true, label: "Bullish" }, { candleClosedAt: 2, confidence: 40, penalty: 25, isTradeEligible: false, label: "Neutral" }])).toEqual({ observations: 2, average: 60, min: 40, max: 80, gated: 1 });
+    expect(summarizeConfidenceTimeline([{ candleClosedAt: 1, confidence: 80, penalty: 0, isTradeEligible: true, label: "Bullish" }, { candleClosedAt: 2, confidence: 40, penalty: 25, isTradeEligible: false, label: "Neutral" }])).toEqual({ observations: 2, average: 60, min: 40, max: 80, gated: 1, abruptDrops: 1 });
+  });
+  it("marks only a consecutive confidence drop at or above the transparent threshold", () => {
+    const annotated = annotateConfidenceDrops([{ candleClosedAt: 1, confidence: 80, penalty: 0, isTradeEligible: true, label: "Bullish" }, { candleClosedAt: 2, confidence: 68, penalty: 5, isTradeEligible: true, label: "Bullish" }, { candleClosedAt: 3, confidence: 53, penalty: 22, isTradeEligible: false, label: "Neutral" }]);
+    expect(annotated.map(point => point.isAbruptDrop)).toEqual([false, false, true]);
+    expect(annotated[2].dropMagnitude).toBe(ABRUPT_CONFIDENCE_DROP_POINTS);
   });
   it("queries the protected confidence history with asset, exchange, timeframe and user scope", async () => {
     const mocked = vi.spyOn(db, "getConfidenceHistory").mockResolvedValue([]);
