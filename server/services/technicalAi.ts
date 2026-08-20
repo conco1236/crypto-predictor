@@ -39,6 +39,34 @@ export function createManualConnectionPayload(model: string) {
   return { model, messages: [{ role: "system", content: "Connection health check. Reply with OK only." }, { role: "user", content: "OK" }], max_tokens: 8 };
 }
 
+export type ManualApiQuota = { status: "quota" | "rate_limit" | "unavailable"; remaining?: number; limit?: number; unit?: string; reset?: string; source?: string };
+
+function numericHeader(headers: Headers, names: string[]) {
+  for (const name of names) {
+    const raw = headers.get(name);
+    if (raw == null) continue;
+    const value = Number(raw);
+    if (Number.isFinite(value)) return value;
+  }
+  return undefined;
+}
+
+function textHeader(headers: Headers, names: string[]) {
+  for (const name of names) {
+    const value = headers.get(name);
+    if (value) return value;
+  }
+  return undefined;
+}
+
+export function readManualApiQuotaHeaders(headers: Headers): ManualApiQuota {
+  const quotaRemaining = numericHeader(headers, ["x-quota-remaining", "x-credits-remaining", "x-usage-remaining"]);
+  if (quotaRemaining != null) return { status: "quota", remaining: quotaRemaining, limit: numericHeader(headers, ["x-quota-limit", "x-credits-limit", "x-usage-limit"]), unit: textHeader(headers, ["x-quota-unit", "x-credits-unit", "x-usage-unit"]), source: "provider quota header" };
+  const requestRemaining = numericHeader(headers, ["x-ratelimit-remaining-requests", "ratelimit-remaining"]);
+  if (requestRemaining != null) return { status: "rate_limit", remaining: requestRemaining, limit: numericHeader(headers, ["x-ratelimit-limit-requests", "ratelimit-limit"]), unit: "requests", reset: textHeader(headers, ["x-ratelimit-reset-requests", "ratelimit-reset"]), source: "provider rate-limit header" };
+  return { status: "unavailable" };
+}
+
 export async function probeManualOpenAiCompatible(baseUrl: string, apiKey: string, model: string, fetchImpl: typeof fetch = fetch) {
   const startedAt = Date.now();
   try {
@@ -46,7 +74,7 @@ export async function probeManualOpenAiCompatible(baseUrl: string, apiKey: strin
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json().catch(() => null) as { model?: unknown; choices?: unknown } | null;
     if (!payload || !Array.isArray(payload.choices)) throw new Error("INVALID_RESPONSE");
-    return { ok: true as const, model: typeof payload.model === "string" ? payload.model : model, latencyMs: Date.now() - startedAt };
+    return { ok: true as const, model: typeof payload.model === "string" ? payload.model : model, latencyMs: Date.now() - startedAt, quota: readManualApiQuotaHeaders(response.headers) };
   } catch (error) {
     if (error instanceof DOMException && error.name === "TimeoutError") throw new Error("Manual AI API không phản hồi trong 8 giây");
     const message = error instanceof Error ? error.message : "UNKNOWN";

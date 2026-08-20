@@ -541,3 +541,9 @@
 - [x] Thêm kiểm tra Manual API server-side với timeout và lỗi đã làm sạch secret
 - [x] Thêm nút test connection cùng trạng thái phản hồi trên AI settings
 - [x] Kiểm thử success/failure, secret redaction, responsive và phát hành checkpoint
+
+## User request: Manual API quota visibility
+
+- [x] Xác định metadata quota tiêu chuẩn có thể đọc từ response/header Manual API
+- [x] Thêm server-side quota probe với fallback không khả dụng, không suy diễn usage
+- [x] Hiển thị quota capability trên AI settings và kiểm thử parsing, redaction, responsive, phát hành checkpoint

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decryptTechnicalAiKey, encryptTechnicalAiKey } from "./db";
-import { createManualConnectionPayload, probeManualOpenAiCompatible, selectAutomaticTechnicalModel, validateManualApiBaseUrl } from "./services/technicalAi";
+import { createManualConnectionPayload, probeManualOpenAiCompatible, readManualApiQuotaHeaders, selectAutomaticTechnicalModel, validateManualApiBaseUrl } from "./services/technicalAi";
 
 describe("technical AI model routing", () => {
   it("selects the preferred available workspace model for automatic mode", () => {
@@ -31,5 +31,10 @@ describe("technical AI model routing", () => {
   });
   it("returns a sanitized connection error instead of an upstream response body", async () => {
     await expect(probeManualOpenAiCompatible("https://api.example.com", "secret", "example-model", async () => new Response("secret leaked upstream", { status: 401 }))).rejects.toThrow("Manual AI API HTTP 401");
+  });
+  it("reports quota only when provider headers explicitly provide it and otherwise marks it unavailable", () => {
+    expect(readManualApiQuotaHeaders(new Headers({ "x-quota-remaining": "42", "x-quota-limit": "100", "x-quota-unit": "credits" }))).toEqual({ status: "quota", remaining: 42, limit: 100, unit: "credits", source: "provider quota header" });
+    expect(readManualApiQuotaHeaders(new Headers({ "x-ratelimit-remaining-requests": "8", "x-ratelimit-limit-requests": "10" }))).toMatchObject({ status: "rate_limit", remaining: 8, limit: 10, unit: "requests" });
+    expect(readManualApiQuotaHeaders(new Headers())).toEqual({ status: "unavailable" });
   });
 });
