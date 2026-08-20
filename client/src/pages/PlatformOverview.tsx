@@ -12,6 +12,7 @@ const modules = [
   { title: "Feed Diagnostics", description: "Phân biệt WebSocket live, REST snapshot fallback, freshness BTC/ETH và latency kỹ thuật theo sàn.", href: "/?page=diagnostics", action: "Mở Diagnostics", icon: Radio, tone: "text-violet-400 bg-violet-500/10 border-violet-500/20" },
   { title: "Quality Alerts", description: "Tùy chỉnh ngưỡng quality penalty để Telegram cảnh báo khi confidence bị giảm mạnh do dữ liệu hoặc thanh khoản.", href: "/?page=quality-alerts", action: "Cấu hình cảnh báo", icon: BellRing, tone: "text-rose-400 bg-rose-500/10 border-rose-500/20" },
   { title: "Command Center", description: "Scorecard vận hành cho feed, Telegram delivery, Heartbeat, quality posture và sandbox P&L.", href: "/?page=command-center", action: "Mở Command Center", icon: LayoutDashboard, tone: "text-sky-400 bg-sky-500/10 border-sky-500/20" },
+  { title: "Confidence Timeline", description: "Theo dõi confidence sau quality gate theo BTC/ETH, sàn và các khung 15m, 1h, 4h, 1d từ snapshot lịch sử.", href: "/?page=confidence-timeline", action: "Mở Confidence Timeline", icon: ChartNoAxesCombined, tone: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20" },
 ];
 
 function RecentDryRunPanel() {

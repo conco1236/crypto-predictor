@@ -452,3 +452,26 @@ export async function getRiskHistory(userId: number, exchange: string, symbol: s
     return point ? { ...point, createdAt: row.createdAt } : null;
   }).filter((item): item is { candleOpenTime: number; candleClosedAt: number; score: number; createdAt: Date } => Boolean(item)).reverse();
 }
+
+export function parseConfidenceSnapshot(row: { label: "Bullish" | "Bearish" | "Neutral"; indicators: string; createdAt: Date }) {
+  try {
+    const payload = JSON.parse(row.indicators) as { confidence?: number; candleOpenTime?: number; candleClosedAt?: number; signalQuality?: { penalty?: number; isTradeEligible?: boolean } };
+    if (typeof payload.confidence !== "number" || !Number.isFinite(payload.confidence)) return null;
+    const penalty = typeof payload.signalQuality?.penalty === "number" && Number.isFinite(payload.signalQuality.penalty) ? Math.max(0, Math.min(100, payload.signalQuality.penalty)) : null;
+    return { candleOpenTime: payload.candleOpenTime ?? row.createdAt.getTime(), candleClosedAt: payload.candleClosedAt ?? row.createdAt.getTime(), confidence: Math.max(0, Math.min(100, payload.confidence)), penalty, isTradeEligible: payload.signalQuality?.isTradeEligible ?? null, label: row.label };
+  } catch {
+    return null;
+  }
+}
+
+export async function getConfidenceHistory(userId: number, exchange: string, symbol: string, interval: string, limit = 36) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select().from(signalSnapshots)
+    .where(and(eq(signalSnapshots.userId, userId), eq(signalSnapshots.exchange, exchange), eq(signalSnapshots.symbol, symbol), eq(signalSnapshots.interval, interval)))
+    .orderBy(desc(signalSnapshots.createdAt)).limit(Math.min(Math.max(limit, 2), 60));
+  return rows.map(row => {
+    const point = parseConfidenceSnapshot(row);
+    return point ? { ...point, createdAt: row.createdAt } : null;
+  }).filter((item): item is { candleOpenTime: number; candleClosedAt: number; confidence: number; penalty: number | null; isTradeEligible: boolean | null; label: "Bullish" | "Bearish" | "Neutral"; createdAt: Date } => Boolean(item)).reverse();
+}

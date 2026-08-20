@@ -460,3 +460,9 @@
 - [x] Thêm alert delivery drill-down với retry status, tuổi bản ghi và lý do quality/no-trade
 - [x] Thêm reporting snapshot executive cho P&L, confidence quality và trạng thái vận hành
 - [x] Kiểm thử data contracts, responsive UI, regression và phát hành release candidate
+
+## User request: confidence timeline by asset and timeframe
+
+- [x] Kiểm tra contract snapshot lịch sử và chuẩn hóa confidence timeline theo asset/khung
+- [x] Xây biểu đồ confidence với bộ lọc BTC/ETH, 15m/1h/4h/1d và decision context
+- [x] Viết regression tests, kiểm tra responsive và phát hành checkpoint
