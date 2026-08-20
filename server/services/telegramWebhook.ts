@@ -1,8 +1,8 @@
 import crypto from "node:crypto";
 import { analyzeAllMarkets, type ExchangeName, type IntervalName, type SymbolName } from "../market/binance";
 import { fetchRelevantNews } from "../market/news";
-import { createPaperBotAudit, createPaperTrade, createReanalysisRequest, getLastSignal, getNewsAiSettings, getPaperTrades, getRecentReanalysis, getTelegramSettingsByChatId, saveAiAnalysis, updatePaperTrade, updateReanalysisRequest } from "../db";
-import { answerTelegramCallbackQuery, buildPaperTradeInlineKeyboard, buildSandboxConfirmationKeyboard, formatOnDemandAiAnalysis, generateSignalAiAnalysis, sendTelegramMessage } from "./telegram";
+import { createPaperBotAudit, createPaperTrade, createReanalysisRequest, getLastSignal, getNewsAiSettings, getPaperTrades, getRecentReanalysis, getTelegramSettingsByChatId, saveAiAnalysis, saveNewsItem, updatePaperTrade, updateReanalysisRequest } from "../db";
+import { answerTelegramCallbackQuery, buildPaperTradeInlineKeyboard, buildSandboxConfirmationKeyboard, formatOnDemandAiAnalysis, formatOnDemandNewsSummary, generateSignalAiAnalysis, sendTelegramMessage } from "./telegram";
 
 export function isValidTelegramWebhookSecret(expected: string, received: string) {
   if (!expected || !received || expected.length !== received.length) return false;
@@ -20,6 +20,8 @@ const AI_CALLBACK_RATE_LIMIT_MS = 15 * 60 * 1000;
 const ALLOWED_AI_CALLBACK_EXCHANGES = new Set<ExchangeName>(["Binance", "Bybit", "OKX"]);
 const ALLOWED_AI_CALLBACK_SYMBOLS = new Set<SymbolName>(["BTCUSDT", "ETHUSDT"]);
 const ALLOWED_AI_CALLBACK_INTERVALS = new Set<IntervalName>(["15m", "1h", "4h", "1d"]);
+const NEWS_SUMMARY_CALLBACK_RATE_LIMIT_MS = 5 * 60 * 1000;
+const recentNewsSummaryRequests = new Map<string, number>();
 
 export function parseAiAnalysisCallback(data: string) {
   const parts = data.split(":");
@@ -27,6 +29,27 @@ export function parseAiAnalysisCallback(data: string) {
   const [, , exchange, symbol, interval] = parts;
   if (!ALLOWED_AI_CALLBACK_EXCHANGES.has(exchange as ExchangeName) || !ALLOWED_AI_CALLBACK_SYMBOLS.has(symbol as SymbolName) || !ALLOWED_AI_CALLBACK_INTERVALS.has(interval as IntervalName)) return undefined;
   return { exchange: exchange as ExchangeName, symbol: symbol as SymbolName, interval: interval as IntervalName };
+}
+
+export function parseNewsSummaryCallback(data: string) {
+  const parts = data.split(":");
+  if (parts.length !== 5 || parts[0] !== "news" || parts[1] !== "summary") return undefined;
+  const [, , exchange, symbol, interval] = parts;
+  if (interval !== "1h" || !ALLOWED_AI_CALLBACK_EXCHANGES.has(exchange as ExchangeName) || !ALLOWED_AI_CALLBACK_SYMBOLS.has(symbol as SymbolName)) return undefined;
+  return { exchange: exchange as ExchangeName, symbol: symbol as SymbolName, interval: "1h" as const };
+}
+
+export function clearNewsSummaryCallbackRateLimitForTests() {
+  recentNewsSummaryRequests.clear();
+}
+
+function parseRssSources(raw: string | undefined) {
+  try {
+    const sources = JSON.parse(raw ?? "[]");
+    return Array.isArray(sources) ? sources.filter((source): source is string => typeof source === "string") : [];
+  } catch {
+    return [];
+  }
 }
 
 function commandFromCallback(data: string) {
@@ -47,7 +70,41 @@ export async function handleTelegramPaperWebhook(update: TelegramUpdate) {
   let handled = true;
   let callbackAnswered = false;
 
-  if (data.startsWith("ai:")) {
+  if (data.startsWith("news:")) {
+    const target = parseNewsSummaryCallback(data);
+    markup = undefined;
+    if (!target) reply = "Nút Tóm tắt tin tức chỉ hỗ trợ tín hiệu BTC/ETH ở khung 1 giờ trên các sàn được hỗ trợ.";
+    else {
+      if (callback?.id) {
+        await answerTelegramCallbackQuery(settings.botToken, callback.id, "Đang tổng hợp tin RSS…");
+        callbackAnswered = true;
+      }
+      const snapshot = await getLastSignal(settings.userId, target.exchange, target.symbol, target.interval);
+      if (!snapshot) reply = "Chưa có snapshot tín hiệu 1 giờ đã lưu cho lựa chọn này. Hãy chờ cảnh báo nến đóng tiếp theo.";
+      else {
+        const rateLimitKey = `${settings.userId}:${snapshot.id}`;
+        const lastRequestedAt = recentNewsSummaryRequests.get(rateLimitKey) ?? 0;
+        if (Date.now() - lastRequestedAt < NEWS_SUMMARY_CALLBACK_RATE_LIMIT_MS) reply = "Tóm tắt tin tức cho tín hiệu này vừa được yêu cầu. Hãy chờ tối đa 5 phút trước khi thử lại.";
+        else {
+          try {
+            const newsSettings = await getNewsAiSettings(settings.userId);
+            if (newsSettings?.enabled === 0) reply = "Thu thập tin tức RSS đang tắt trong cài đặt. Hãy bật lại để dùng Tóm tắt tin tức 1h.";
+            else {
+              const lookbackHours = newsSettings?.newsLookbackHours ?? 6;
+              recentNewsSummaryRequests.set(rateLimitKey, Date.now());
+              const news = await fetchRelevantNews(target.symbol, Date.now(), { sources: parseRssSources(newsSettings?.rssSources), lookbackHours });
+              await Promise.all(news.map(item => saveNewsItem(settings.userId, { symbol: target.symbol, source: item.source, url: item.url, title: item.title, summary: item.summary, publishedAt: item.publishedAt })));
+              reply = formatOnDemandNewsSummary({ exchange: target.exchange, symbol: target.symbol, news, lookbackHours });
+              console.info(`[TelegramNews] user=${settings.userId} status=sent target=${target.exchange}:${target.symbol}:1h snapshot=${snapshot.id} items=${news.length}`);
+            }
+          } catch (error) {
+            console.warn(`[TelegramNews] user=${settings.userId} status=failed target=${target.exchange}:${target.symbol}:1h error=${error instanceof Error ? error.message : String(error)}`);
+            reply = "Không thể tổng hợp RSS lúc này. Tín hiệu kỹ thuật gốc không thay đổi; hãy thử lại sau.";
+          }
+        }
+      }
+    }
+  } else if (data.startsWith("ai:")) {
     const target = parseAiAnalysisCallback(data);
     markup = undefined;
     if (!target) reply = "Nút Phân tích AI không hợp lệ hoặc dữ liệu không còn được hỗ trợ.";

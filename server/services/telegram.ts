@@ -28,7 +28,8 @@ export function buildSignalInlineKeyboard(analysis: MarketAnalysis): TelegramInl
   const openPaper = { text: "Mở paper trade", callback_data: `paper:open:${analysis.exchange}:${analysis.symbol}:${analysis.interval}` };
   const sandbox = { text: "Sandbox Trade", callback_data: `sandbox:request:${analysis.exchange}:${analysis.symbol}:${analysis.interval}` };
   const analyzeAi = { text: "Phân tích AI", callback_data: `ai:analyze:${analysis.exchange}:${analysis.symbol}:${analysis.interval}` };
-  return { inline_keyboard: [[{ text: "Xem biểu đồ", url: chartUrl }, { text: "Kiểm tra thanh khoản", url: liquidityUrl }], [analyzeAi, openPaper, sandbox], [{ text: "Mở Paper Bot", url: paperUrl }, { text: "Xem P&L", url: pnlUrl }]] };
+  const newsSummary = analysis.interval === "1h" ? [{ text: "Tóm tắt tin tức 1h", callback_data: `news:summary:${analysis.exchange}:${analysis.symbol}:1h` }] : [];
+  return { inline_keyboard: [[{ text: "Xem biểu đồ", url: chartUrl }, { text: "Kiểm tra thanh khoản", url: liquidityUrl }], [analyzeAi, ...newsSummary], [openPaper, sandbox], [{ text: "Mở Paper Bot", url: paperUrl }, { text: "Xem P&L", url: pnlUrl }]] };
 }
 
 export async function answerTelegramCallbackQuery(botToken: string, callbackQueryId: string, text: string) {
@@ -71,6 +72,20 @@ export async function generateSignalAiAnalysis(userId: number, analysis: MarketA
 
 function escapeTelegramHtml(value: string) {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+export function formatOnDemandNewsSummary(input: { exchange: string; symbol: string; news: NewsItem[]; lookbackHours: number }) {
+  const asset = escapeTelegramHtml(input.symbol.replace("USDT", ""));
+  const items = input.news.slice(0, 3);
+  const lines = items.length
+    ? items.map((item, index) => `${index + 1}. <b>${escapeTelegramHtml(item.source)}</b> · ${new Date(item.publishedAt).toLocaleString("vi-VN")}\n${escapeTelegramHtml(item.title).slice(0, 180)}${item.summary ? `\n${escapeTelegramHtml(item.summary).slice(0, 300)}` : ""}\n${escapeTelegramHtml(item.url)}`)
+    : ["Không tìm thấy tin RSS liên quan và còn hiệu lực trong phạm vi thời gian đã cấu hình."];
+  return [
+    `<b>Tóm tắt tin tức 1h — ${asset}</b>`,
+    `Sàn tín hiệu: <b>${escapeTelegramHtml(input.exchange)}</b> | Phạm vi RSS: ${input.lookbackHours} giờ gần nhất`,
+    ...lines,
+    `<i>Thông tin từ RSS công khai, chỉ mang tính quan sát; không tạo hoặc thay đổi lệnh giao dịch.</i>`,
+  ].join("\n");
 }
 
 export function formatOnDemandAiAnalysis(input: { exchange: string; symbol: string; interval: string; analysis: string }) {

@@ -561,3 +561,10 @@
 - [x] Thêm nút Phân tích AI với ownership, rate limit và guardrail không giao dịch
 - [x] Lưu audit callback và phản hồi Telegram cho phân tích AI theo nến
 - [x] Kiểm thử callback auth, rate limit, formatter, responsive và phát hành checkpoint
+
+## User request: Telegram news summary callback for 1h signals
+
+- [x] Rà soát Signal keyboard, RSS settings và handler callback hiện có
+- [x] Thêm nút Tóm tắt tin tức 1h chỉ cho alert khung 1h với allowlist/ownership
+- [x] Tóm tắt RSS có nguồn, rate limit và lưu lịch sử quan sát theo tài khoản
+- [x] Kiểm thử scope 1h, callback safety, rate limit, responsive và phát hành checkpoint

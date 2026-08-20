@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildMomentumCriticalInlineKeyboard, buildSignalInlineKeyboard, formatMomentumCriticalAlert, formatOnDemandAiAnalysis, formatSignalAlert, sendTelegramMessage } from "./telegram";
+import { buildMomentumCriticalInlineKeyboard, buildSignalInlineKeyboard, formatMomentumCriticalAlert, formatOnDemandAiAnalysis, formatOnDemandNewsSummary, formatSignalAlert, sendTelegramMessage } from "./telegram";
 import type { MarketAnalysis } from "../market/binance";
 
 const sample = {
@@ -32,6 +32,8 @@ describe("telegram alerts", () => {
     expect(keyboard.inline_keyboard[0][1].url).toContain("focus=liquidity");
     expect(keyboard.inline_keyboard[0][1].url).not.toContain("token");
     expect(keyboard.inline_keyboard.flat().find(button => button.text === "Phân tích AI")?.callback_data).toBe("ai:analyze:Binance:BTCUSDT:1h");
+    expect(keyboard.inline_keyboard.flat().find(button => button.text === "Tóm tắt tin tức 1h")?.callback_data).toBe("news:summary:Binance:BTCUSDT:1h");
+    expect(buildSignalInlineKeyboard({ ...sample, interval: "4h" }).inline_keyboard.flat().some(button => button.text === "Tóm tắt tin tức 1h")).toBe(false);
   });
 
   it("formats an on-demand AI response safely without a trade action", () => {
@@ -39,6 +41,14 @@ describe("telegram alerts", () => {
     expect(message).toContain("Phân tích AI theo yêu cầu");
     expect(message).toContain("RSI &lt; 70");
     expect(message).toContain("Không tạo hoặc thay đổi lệnh giao dịch");
+  });
+
+  it("formats sourced RSS items for an on-demand 1h news summary without a trade action", () => {
+    const message = formatOnDemandNewsSummary({ exchange: "OKX", symbol: "ETHUSDT", lookbackHours: 6, news: [{ source: "Example", title: "ETH < catalyst", summary: "Market update", url: "https://example.com/news", publishedAt: 1_700_000_000_000 }] });
+    expect(message).toContain("Tóm tắt tin tức 1h — ETH");
+    expect(message).toContain("ETH &lt; catalyst");
+    expect(message).toContain("https://example.com/news");
+    expect(message).toContain("không tạo hoặc thay đổi lệnh giao dịch");
   });
 
   it("includes the AI analysis section when generated for a candle-close alert", () => {
