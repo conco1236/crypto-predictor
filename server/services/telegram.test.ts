@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildSignalInlineKeyboard, formatMomentumCriticalAlert, formatSignalAlert, sendTelegramMessage } from "./telegram";
+import { buildMomentumCriticalInlineKeyboard, buildSignalInlineKeyboard, formatMomentumCriticalAlert, formatSignalAlert, sendTelegramMessage } from "./telegram";
 import type { MarketAnalysis } from "../market/binance";
 
 const sample = {
@@ -51,6 +51,14 @@ describe("telegram alerts", () => {
     expect(message).toContain("76.0/100 → 54.0/100");
     expect(message).toContain("không tự mở/đóng lệnh");
     expect(message).not.toContain("Mở paper trade");
+  });
+
+  it("adds a filtered Confidence Timeline link and safe inline observation button to a Critical alert", () => {
+    const message = formatMomentumCriticalAlert({ exchange: "OKX", symbol: "ETHUSDT", interval: "4h", candleClosedAt: 1_700_000_000_000, previousConfidence: 76, confidence: 54, delta: -22, reason: "Confidence giảm đột ngột", penalty: 24, isTradeEligible: false });
+    const keyboard = buildMomentumCriticalInlineKeyboard({ exchange: "OKX", symbol: "ETHUSDT", interval: "4h" });
+    expect(message).toContain("page=confidence-timeline&exchange=OKX&symbol=ETHUSDT&interval=4h");
+    expect(keyboard.inline_keyboard[0][0].url).toContain("page=confidence-timeline&exchange=OKX&symbol=ETHUSDT&interval=4h");
+    expect(keyboard.inline_keyboard[0][0].url).not.toContain("token");
   });
 
   it("surfaces Telegram API description when delivery fails", async () => {

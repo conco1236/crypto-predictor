@@ -29,7 +29,7 @@ import {
 import { analyzeAllMarkets } from "../market/binance";
 import { fetchRelevantNews } from "../market/news";
 import { calibrateConfidence } from "../market/outcomes";
-import { buildSignalInlineKeyboard, formatMomentumCriticalAlert, formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./telegram";
+import { buildMomentumCriticalInlineKeyboard, buildSignalInlineKeyboard, formatMomentumCriticalAlert, formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./telegram";
 import { resolveAlertRule } from "./alertRules";
 import { resolveQualityThreshold } from "./qualityThresholds";
 import { detectCriticalMomentumTransition } from "../../shared/confidenceMomentum";
@@ -145,7 +145,7 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
         const attempts = currentCriticalAlert.attempts + 1;
         await updateMomentumCriticalAlert(currentCriticalAlert.id, { status: "pending", attempts, lastError: null });
         try {
-          const result = await sendTelegramMessage(alertSettings.botToken, alertSettings.chatId, currentCriticalAlert.message ?? "<b>⚠️ Momentum Critical</b>");
+          const result = await sendTelegramMessage(alertSettings.botToken, alertSettings.chatId, currentCriticalAlert.message ?? "<b>⚠️ Momentum Critical</b>", buildMomentumCriticalInlineKeyboard({ exchange: a.exchange, symbol: a.symbol, interval: a.interval }));
           await updateMomentumCriticalAlert(currentCriticalAlert.id, { status: "sent", telegramMessageId: result.result?.message_id ? String(result.result.message_id) : null, lastError: null, sentAt: new Date() });
           alerts++; criticalAlerts++;
         } catch (error) {

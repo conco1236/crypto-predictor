@@ -1,6 +1,7 @@
 import type { MarketAnalysis } from "../market/binance";
 import type { NewsItem } from "../market/news";
 import { invokeLLM } from "../_core/llm";
+import { buildConfidenceTimelineUrl, type ConfidenceTimelineFilter } from "../../shared/confidenceTimelineLink";
 
 export type TelegramSendResult = { ok: boolean; result?: { message_id?: number }; description?: string; error_code?: number };
 export type TelegramInlineKeyboard = { inline_keyboard: Array<Array<{ text: string; url?: string; callback_data?: string }>> };
@@ -97,6 +98,7 @@ export function formatSignalAlert(analysis: MarketAnalysis, aiAnalysis?: string,
 export function formatMomentumCriticalAlert(input: { exchange: string; symbol: string; interval: string; candleClosedAt: number; previousConfidence: number | null; confidence: number; delta: number | null; reason: string; penalty: number | null; isTradeEligible: boolean | null }) {
   const previous = input.previousConfidence == null ? "không đủ lịch sử" : `${input.previousConfidence.toFixed(1)}/100`;
   const delta = input.delta == null ? "—" : `${input.delta > 0 ? "+" : ""}${input.delta.toFixed(1)} điểm`;
+  const timelineUrl = buildConfidenceTimelineUrl({ exchange: input.exchange as ConfidenceTimelineFilter["exchange"], symbol: input.symbol as ConfidenceTimelineFilter["symbol"], interval: input.interval as ConfidenceTimelineFilter["interval"] }, process.env.PUBLIC_APP_URL ?? "https://cryptosig-2awoct8z.manus.space");
   return [
     `<b>⚠️ Momentum Critical — ${escapeTelegramHtml(input.symbol.replace("USDT", ""))}</b>`,
     `Sàn: <b>${escapeTelegramHtml(input.exchange)}</b> | Khung: <b>${escapeTelegramHtml(input.interval)}</b>`,
@@ -104,6 +106,12 @@ export function formatMomentumCriticalAlert(input: { exchange: string; symbol: s
     `Quality: <b>${input.isTradeEligible === false ? "Quality-gated" : "Theo dõi"}</b>${input.penalty == null ? "" : ` · penalty ${input.penalty.toFixed(1)} điểm`}`,
     `Lý do: ${escapeTelegramHtml(input.reason)}`,
     `Nến đóng: <b>${new Date(input.candleClosedAt).toLocaleString("vi-VN")}</b>`,
+    `Quan sát: <a href="${timelineUrl}">Mở Confidence Timeline đã lọc</a>`,
     `<i>Cảnh báo quan sát; không tự mở/đóng lệnh và không thay đổi guardrail Trade/No Trade.</i>`,
   ].join("\n");
+}
+
+export function buildMomentumCriticalInlineKeyboard(input: Pick<ConfidenceTimelineFilter, "exchange" | "symbol" | "interval">): TelegramInlineKeyboard {
+  const url = buildConfidenceTimelineUrl(input, process.env.PUBLIC_APP_URL ?? "https://cryptosig-2awoct8z.manus.space");
+  return { inline_keyboard: [[{ text: "Mở Confidence Timeline", url }]] };
 }

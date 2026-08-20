@@ -498,3 +498,9 @@
 - [x] Thêm phát hiện chuyển trạng thái Critical và alert Telegram không gửi trùng
 - [x] Hiển thị/audit alert Critical trong Operations hoặc Command Center
 - [x] Kiểm thử transition, idempotency, Telegram delivery, responsive và phát hành checkpoint
+
+## User request: Critical Telegram Confidence Timeline deep link
+
+- [x] Thêm deep link Confidence Timeline theo exchange, tài sản và timeframe trong Critical alert
+- [x] Đọc query filters trên Confidence Timeline và khởi tạo bộ lọc từ liên kết Telegram
+- [x] Kiểm thử formatter, routing query filters, responsive và phát hành checkpoint

@@ -7,10 +7,11 @@ import { trpc } from "@/lib/trpc";
 import { ABRUPT_CONFIDENCE_DROP_POINTS, annotateConfidenceDrops, formatConfidencePoint, summarizeConfidenceTimeline } from "@/lib/confidenceTimeline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CONFIDENCE_EXCHANGES, CONFIDENCE_INTERVALS, CONFIDENCE_SYMBOLS, parseConfidenceTimelineFilter } from "@shared/confidenceTimelineLink";
 
-const exchanges = ["Binance", "Bybit", "OKX"] as const;
-const symbols = ["BTCUSDT", "ETHUSDT"] as const;
-const intervals = ["15m", "1h", "4h", "1d"] as const;
+const exchanges = CONFIDENCE_EXCHANGES;
+const symbols = CONFIDENCE_SYMBOLS;
+const intervals = CONFIDENCE_INTERVALS;
 const tooltipStyle = { background: "var(--popover)", color: "var(--popover-foreground)", border: "1px solid var(--border)", borderRadius: 10, fontSize: 12 };
 
 function SelectControl({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: readonly string[] }) { return <label className="text-xs text-muted-foreground">{label}<select className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground" value={value} onChange={event => onChange(event.target.value)}>{options.map(option => <option key={option} value={option}>{option.replace("USDT", "")}</option>)}</select></label>; }
@@ -18,9 +19,9 @@ function Metric({ label, value, note, alert = false }: { label: string; value: s
 
 export default function ConfidenceTimeline() {
   const { user, loading } = useAuth();
-  const [exchange, setExchange] = useState<(typeof exchanges)[number]>("Binance");
-  const [symbol, setSymbol] = useState<(typeof symbols)[number]>("BTCUSDT");
-  const [interval, setInterval] = useState<(typeof intervals)[number]>("1h");
+  const [exchange, setExchange] = useState<(typeof exchanges)[number]>(() => parseConfidenceTimelineFilter(window.location.search).exchange);
+  const [symbol, setSymbol] = useState<(typeof symbols)[number]>(() => parseConfidenceTimelineFilter(window.location.search).symbol);
+  const [interval, setInterval] = useState<(typeof intervals)[number]>(() => parseConfidenceTimelineFilter(window.location.search).interval);
   const [limit, setLimit] = useState(36);
   const history = trpc.market.confidenceHistory.useQuery({ exchange, symbol, interval, limit }, { enabled: Boolean(user), refetchInterval: 30_000 });
   const momentumSettings = trpc.market.momentumSettings.useQuery(undefined, { enabled: Boolean(user) });
