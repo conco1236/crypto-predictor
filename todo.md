@@ -477,3 +477,10 @@
 
 - [x] Kiểm tra trạng thái repository và đồng bộ Confidence Timeline lên nhánh main
 - [x] Xác minh commit GitHub sau khi push
+
+## User request: continued professional upgrades
+
+- [x] Rà soát confidence-drop, quality gate và lịch sử cảnh báo để xác định early-warning có dữ liệu thật
+- [x] Thêm risk momentum classification từ chuỗi confidence/quality snapshot, không thay đổi guardrail Trade/No Trade
+- [x] Mở rộng Command Center với bảng early-warning action queue và decision context
+- [x] Kiểm thử regression, responsive và phát hành checkpoint

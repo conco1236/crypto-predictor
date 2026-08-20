@@ -1,16 +1,9 @@
-export type ConfidenceTimelinePoint = { candleClosedAt: number; confidence: number; penalty: number | null; isTradeEligible: boolean | null; label: "Bullish" | "Bearish" | "Neutral" };
-export type ConfidenceTimelineAlertPoint = ConfidenceTimelinePoint & { confidenceDelta: number | null; dropMagnitude: number; isAbruptDrop: boolean };
-export const ABRUPT_CONFIDENCE_DROP_POINTS = 15;
+import { ABRUPT_CONFIDENCE_DROP_POINTS as sharedDropThreshold, annotateConfidenceMomentum, type ConfidenceMomentumPoint } from "@shared/confidenceMomentum";
 
-export function annotateConfidenceDrops(points: ConfidenceTimelinePoint[], threshold = ABRUPT_CONFIDENCE_DROP_POINTS): ConfidenceTimelineAlertPoint[] {
-  const safeThreshold = Math.max(1, threshold);
-  return points.map((point, index) => {
-    const previous = points[index - 1];
-    const confidenceDelta = previous ? Math.round((point.confidence - previous.confidence) * 10) / 10 : null;
-    const dropMagnitude = confidenceDelta != null && confidenceDelta < 0 ? Math.abs(confidenceDelta) : 0;
-    return { ...point, confidenceDelta, dropMagnitude, isAbruptDrop: dropMagnitude >= safeThreshold };
-  });
-}
+export type ConfidenceTimelinePoint = ConfidenceMomentumPoint;
+export type ConfidenceTimelineAlertPoint = ReturnType<typeof annotateConfidenceMomentum>[number];
+export const ABRUPT_CONFIDENCE_DROP_POINTS = sharedDropThreshold;
+export const annotateConfidenceDrops = annotateConfidenceMomentum;
 
 export function summarizeConfidenceTimeline(points: ConfidenceTimelinePoint[]) {
   if (!points.length) return { observations: 0, average: null, min: null, max: null, gated: 0, abruptDrops: 0 };

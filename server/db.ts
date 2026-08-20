@@ -2,6 +2,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import { and, desc, eq, gt, like } from "drizzle-orm";
 import { aiAnalyses, aiReanalysisRequests, heartbeatRuns, InsertUser, newsAiSettings, newsItems, paperBotAuditLogs, paperTrades, signalOutcomes, signalProcessingState, signalSnapshots, telegramAlertRules, telegramDeliveryLogs, telegramQualityThresholdHistory, telegramQualityThresholdOverrides, telegramSettings, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { classifyConfidenceMomentum } from "../shared/confidenceMomentum";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -474,4 +475,24 @@ export async function getConfidenceHistory(userId: number, exchange: string, sym
     const point = parseConfidenceSnapshot(row);
     return point ? { ...point, createdAt: row.createdAt } : null;
   }).filter((item): item is { candleOpenTime: number; candleClosedAt: number; confidence: number; penalty: number | null; isTradeEligible: boolean | null; label: "Bullish" | "Bearish" | "Neutral"; createdAt: Date } => Boolean(item)).reverse();
+}
+
+export async function getConfidenceEarlyWarnings(userId: number, limit = 24) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select().from(signalSnapshots).where(eq(signalSnapshots.userId, userId)).orderBy(desc(signalSnapshots.createdAt)).limit(500);
+  const groups = new Map<string, { exchange: string; symbol: string; interval: string; points: Array<ReturnType<typeof parseConfidenceSnapshot>> }>();
+  for (const row of rows) {
+    const point = parseConfidenceSnapshot(row);
+    if (!point) continue;
+    const key = `${row.exchange}:${row.symbol}:${row.interval}`;
+    const group = groups.get(key) ?? { exchange: row.exchange, symbol: row.symbol, interval: row.interval, points: [] };
+    if (group.points.length < 3) group.points.push(point);
+    groups.set(key, group);
+  }
+  return Array.from(groups.values()).map(group => {
+    const points = group.points.filter((point): point is NonNullable<typeof point> => Boolean(point)).sort((a, b) => a.candleClosedAt - b.candleClosedAt);
+    const momentum = classifyConfidenceMomentum(points);
+    return { exchange: group.exchange, symbol: group.symbol, interval: group.interval, observations: points.length, momentum };
+  }).filter(item => item.momentum.status === "critical" || item.momentum.status === "deteriorating").sort((a, b) => (a.momentum.status === "critical" ? -1 : 1) - (b.momentum.status === "critical" ? -1 : 1)).slice(0, Math.min(Math.max(limit, 1), 30));
 }
