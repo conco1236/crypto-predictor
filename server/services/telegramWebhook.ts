@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
-import { analyzeAllMarkets } from "../market/binance";
-import { createPaperBotAudit, createPaperTrade, getPaperTrades, getTelegramSettingsByChatId, updatePaperTrade } from "../db";
-import { answerTelegramCallbackQuery, buildPaperTradeInlineKeyboard, buildSandboxConfirmationKeyboard, sendTelegramMessage } from "./telegram";
+import { analyzeAllMarkets, type ExchangeName, type IntervalName, type SymbolName } from "../market/binance";
+import { fetchRelevantNews } from "../market/news";
+import { createPaperBotAudit, createPaperTrade, createReanalysisRequest, getLastSignal, getNewsAiSettings, getPaperTrades, getRecentReanalysis, getTelegramSettingsByChatId, saveAiAnalysis, updatePaperTrade, updateReanalysisRequest } from "../db";
+import { answerTelegramCallbackQuery, buildPaperTradeInlineKeyboard, buildSandboxConfirmationKeyboard, formatOnDemandAiAnalysis, generateSignalAiAnalysis, sendTelegramMessage } from "./telegram";
 
 export function isValidTelegramWebhookSecret(expected: string, received: string) {
   if (!expected || !received || expected.length !== received.length) return false;
@@ -14,6 +15,19 @@ export function isPaperBotPaused(userId: number) { return pausedUsers.has(userId
 
 type TelegramChat = { id?: number | string };
 export type TelegramUpdate = { message?: { chat?: TelegramChat; text?: string }; callback_query?: { id?: string; data?: string; message?: { chat?: TelegramChat } } };
+
+const AI_CALLBACK_RATE_LIMIT_MS = 15 * 60 * 1000;
+const ALLOWED_AI_CALLBACK_EXCHANGES = new Set<ExchangeName>(["Binance", "Bybit", "OKX"]);
+const ALLOWED_AI_CALLBACK_SYMBOLS = new Set<SymbolName>(["BTCUSDT", "ETHUSDT"]);
+const ALLOWED_AI_CALLBACK_INTERVALS = new Set<IntervalName>(["15m", "1h", "4h", "1d"]);
+
+export function parseAiAnalysisCallback(data: string) {
+  const parts = data.split(":");
+  if (parts.length !== 5 || parts[0] !== "ai" || parts[1] !== "analyze") return undefined;
+  const [, , exchange, symbol, interval] = parts;
+  if (!ALLOWED_AI_CALLBACK_EXCHANGES.has(exchange as ExchangeName) || !ALLOWED_AI_CALLBACK_SYMBOLS.has(symbol as SymbolName) || !ALLOWED_AI_CALLBACK_INTERVALS.has(interval as IntervalName)) return undefined;
+  return { exchange: exchange as ExchangeName, symbol: symbol as SymbolName, interval: interval as IntervalName };
+}
 
 function commandFromCallback(data: string) {
   if (data.startsWith("paper:")) return data.replace(/^paper:/, "/paper_").replace(/:/g, " ");
@@ -31,8 +45,43 @@ export async function handleTelegramPaperWebhook(update: TelegramUpdate) {
   let reply = "Lệnh không hợp lệ. Dùng inline keyboard để điều khiển paper bot.";
   let markup = callback ? buildPaperTradeInlineKeyboard(undefined, isPaperBotPaused(settings.userId)) : undefined;
   let handled = true;
+  let callbackAnswered = false;
 
-  if (data.startsWith("sandbox:")) {
+  if (data.startsWith("ai:")) {
+    const target = parseAiAnalysisCallback(data);
+    markup = undefined;
+    if (!target) reply = "Nút Phân tích AI không hợp lệ hoặc dữ liệu không còn được hỗ trợ.";
+    else {
+      if (callback?.id) {
+        await answerTelegramCallbackQuery(settings.botToken, callback.id, "Đang tạo phân tích AI…");
+        callbackAnswered = true;
+      }
+      const snapshot = await getLastSignal(settings.userId, target.exchange, target.symbol, target.interval);
+      if (!snapshot) reply = "Chưa có snapshot tín hiệu đã lưu cho lựa chọn này. Hãy chờ cảnh báo nến đóng tiếp theo.";
+      else {
+        const recent = await getRecentReanalysis(settings.userId, snapshot.id, AI_CALLBACK_RATE_LIMIT_MS);
+        if (recent) reply = "Tín hiệu này đã được yêu cầu phân tích AI trong 15 phút gần đây. Hãy chờ thêm trước khi thử lại.";
+        else {
+          const requestId = await createReanalysisRequest(settings.userId, snapshot.id);
+          try {
+            const analysis = (await analyzeAllMarkets()).find(item => item.exchange === target.exchange && item.symbol === target.symbol && item.interval === target.interval);
+            if (!analysis) throw new Error("Không tải được dữ liệu kỹ thuật hiện hành");
+            const newsSettings = await getNewsAiSettings(settings.userId);
+            const news = target.interval === "1h" ? await fetchRelevantNews(target.symbol, Date.now(), { sources: JSON.parse(newsSettings?.rssSources ?? "[]") as string[], lookbackHours: newsSettings?.newsLookbackHours ?? 6 }) : [];
+            const aiAnalysis = await generateSignalAiAnalysis(settings.userId, analysis, news);
+            await saveAiAnalysis(settings.userId, { snapshotId: snapshot.id, symbol: target.symbol, interval: target.interval, analysis: aiAnalysis });
+            await updateReanalysisRequest(requestId, { status: "completed" });
+            reply = formatOnDemandAiAnalysis({ ...target, analysis: aiAnalysis });
+            console.info(`[TelegramAI] user=${settings.userId} status=completed target=${target.exchange}:${target.symbol}:${target.interval} snapshot=${snapshot.id}`);
+          } catch (error) {
+            await updateReanalysisRequest(requestId, { status: "failed", error: "Không thể tạo phân tích AI từ callback Telegram" });
+            console.warn(`[TelegramAI] user=${settings.userId} status=failed target=${target.exchange}:${target.symbol}:${target.interval} error=${error instanceof Error ? error.message : String(error)}`);
+            reply = "AI tạm thời không thể tạo phân tích. Tín hiệu kỹ thuật gốc vẫn không thay đổi; hãy thử lại sau.";
+          }
+        }
+      }
+    }
+  } else if (data.startsWith("sandbox:")) {
     const parts = data.split(":");
     const action = parts[1];
     if (action === "request") {
@@ -96,7 +145,7 @@ export async function handleTelegramPaperWebhook(update: TelegramUpdate) {
   }
   if (handled) {
     await sendTelegramMessage(settings.botToken, chatId, reply, markup);
-    if (callback?.id) await answerTelegramCallbackQuery(settings.botToken, callback.id, reply.replace(/<[^>]+>/g, "").slice(0, 180));
+    if (callback?.id && !callbackAnswered) await answerTelegramCallbackQuery(settings.botToken, callback.id, reply.replace(/<[^>]+>/g, "").slice(0, 180));
   }
   return { ok: true, handled };
 }

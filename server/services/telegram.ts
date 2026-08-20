@@ -27,7 +27,8 @@ export function buildSignalInlineKeyboard(analysis: MarketAnalysis): TelegramInl
   const pnlUrl = `${appUrl}/?page=trading-bot&focus=pnl`;
   const openPaper = { text: "Mở paper trade", callback_data: `paper:open:${analysis.exchange}:${analysis.symbol}:${analysis.interval}` };
   const sandbox = { text: "Sandbox Trade", callback_data: `sandbox:request:${analysis.exchange}:${analysis.symbol}:${analysis.interval}` };
-  return { inline_keyboard: [[{ text: "Xem biểu đồ", url: chartUrl }, { text: "Kiểm tra thanh khoản", url: liquidityUrl }], [openPaper, sandbox, { text: "Mở Paper Bot", url: paperUrl }, { text: "Xem P&L", url: pnlUrl }]] };
+  const analyzeAi = { text: "Phân tích AI", callback_data: `ai:analyze:${analysis.exchange}:${analysis.symbol}:${analysis.interval}` };
+  return { inline_keyboard: [[{ text: "Xem biểu đồ", url: chartUrl }, { text: "Kiểm tra thanh khoản", url: liquidityUrl }], [analyzeAi, openPaper, sandbox], [{ text: "Mở Paper Bot", url: paperUrl }, { text: "Xem P&L", url: pnlUrl }]] };
 }
 
 export async function answerTelegramCallbackQuery(botToken: string, callbackQueryId: string, text: string) {
@@ -70,6 +71,16 @@ export async function generateSignalAiAnalysis(userId: number, analysis: MarketA
 
 function escapeTelegramHtml(value: string) {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+export function formatOnDemandAiAnalysis(input: { exchange: string; symbol: string; interval: string; analysis: string }) {
+  const safeAnalysis = escapeTelegramHtml(input.analysis).slice(0, 3_400);
+  return [
+    `<b>Phân tích AI theo yêu cầu — ${escapeTelegramHtml(input.symbol.replace("USDT", ""))}</b>`,
+    `Sàn: <b>${escapeTelegramHtml(input.exchange)}</b> | Khung: <b>${escapeTelegramHtml(input.interval)}</b>`,
+    safeAnalysis,
+    `<i>Chỉ mang tính tham khảo, không phải khuyến nghị đầu tư. Không tạo hoặc thay đổi lệnh giao dịch.</i>`,
+  ].join("\n");
 }
 
 export function formatSignalAlert(analysis: MarketAnalysis, aiAnalysis?: string, news: NewsItem[] = []) {

@@ -554,3 +554,10 @@
 - [x] Thêm threshold cấu hình, audit state và phát hiện quota/rate-limit thấp chỉ khi provider công bố
 - [x] Gửi Telegram alert không trùng, hiển thị audit/status trong AI settings
 - [x] Kiểm thử conditions, idempotency, Telegram safety, responsive và phát hành checkpoint
+
+## User request: Telegram AI analysis command
+
+- [x] Rà soát keyboard/webhook/reanalysis và xác định callback payload theo asset, sàn, khung
+- [x] Thêm nút Phân tích AI với ownership, rate limit và guardrail không giao dịch
+- [x] Lưu audit callback và phản hồi Telegram cho phân tích AI theo nến
+- [x] Kiểm thử callback auth, rate limit, formatter, responsive và phát hành checkpoint
