@@ -574,3 +574,9 @@
 - [x] Kiểm tra trạng thái repository, remote và loại trừ secrets/runtime files
 - [x] Commit các thay đổi callback Telegram mới nhất trên nhánh main
 - [x] Push và xác minh commit trên GitHub
+
+## User request: Extended unit tests for 1h news summary callback
+
+- [x] Rà soát coverage callback Tóm tắt tin tức 1h hiện có và xác định nhánh thiếu
+- [x] Bổ sung unit tests cho RSS tắt, không có tin, lỗi fetch và quyền sở hữu snapshot
+- [x] Chạy TypeScript/full suite, kiểm tra regression và phát hành checkpoint

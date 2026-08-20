@@ -102,4 +102,51 @@ describe("Telegram AI analysis callback", () => {
     expect(mocks.fetchRelevantNews).toHaveBeenCalledTimes(1);
     expect(mocks.sendTelegramMessage).toHaveBeenLastCalledWith("bot-token", "chat-1", expect.stringContaining("5 phút"), undefined);
   });
+
+  it("does not fetch RSS when the user-owned 1h snapshot is absent", async () => {
+    mocks.getLastSignal.mockResolvedValue(undefined);
+    const newsCallback = { callback_query: { id: "callback-news", data: "news:summary:Binance:BTCUSDT:1h", message: { chat: { id: "chat-1" } } } };
+    await handleTelegramPaperWebhook(newsCallback);
+    expect(mocks.fetchRelevantNews).not.toHaveBeenCalled();
+    expect(mocks.saveNewsItem).not.toHaveBeenCalled();
+    expect(mocks.formatOnDemandNewsSummary).not.toHaveBeenCalled();
+    expect(mocks.sendTelegramMessage).toHaveBeenCalledWith("bot-token", "chat-1", expect.stringContaining("snapshot tín hiệu 1 giờ"), undefined);
+  });
+
+  it("does not fetch or persist RSS when news collection is disabled for the account", async () => {
+    mocks.getNewsAiSettings.mockResolvedValue({ enabled: 0, rssSources: "[\"https://example.com/rss\"]", newsLookbackHours: 12 });
+    const newsCallback = { callback_query: { id: "callback-news", data: "news:summary:Binance:BTCUSDT:1h", message: { chat: { id: "chat-1" } } } };
+    await handleTelegramPaperWebhook(newsCallback);
+    expect(mocks.fetchRelevantNews).not.toHaveBeenCalled();
+    expect(mocks.saveNewsItem).not.toHaveBeenCalled();
+    expect(mocks.formatOnDemandNewsSummary).not.toHaveBeenCalled();
+    expect(mocks.sendTelegramMessage).toHaveBeenCalledWith("bot-token", "chat-1", expect.stringContaining("đang tắt"), undefined);
+  });
+
+  it("formats an empty sourced-news result without persisting phantom items", async () => {
+    const newsCallback = { callback_query: { id: "callback-news", data: "news:summary:Binance:BTCUSDT:1h", message: { chat: { id: "chat-1" } } } };
+    await handleTelegramPaperWebhook(newsCallback);
+    expect(mocks.fetchRelevantNews).toHaveBeenCalledTimes(1);
+    expect(mocks.saveNewsItem).not.toHaveBeenCalled();
+    expect(mocks.formatOnDemandNewsSummary).toHaveBeenCalledWith(expect.objectContaining({ news: [], lookbackHours: 6 }));
+    expect(mocks.sendTelegramMessage).toHaveBeenCalledWith("bot-token", "chat-1", "<b>Tóm tắt tin tức 1h</b>", undefined);
+  });
+
+  it("uses account-scoped RSS sources and lookback settings", async () => {
+    mocks.getNewsAiSettings.mockResolvedValue({ enabled: 1, rssSources: "[\"https://feed.example/rss\"]", newsLookbackHours: 12 });
+    const newsCallback = { callback_query: { id: "callback-news", data: "news:summary:Binance:BTCUSDT:1h", message: { chat: { id: "chat-1" } } } };
+    await handleTelegramPaperWebhook(newsCallback);
+    expect(mocks.fetchRelevantNews).toHaveBeenCalledWith("BTCUSDT", expect.any(Number), { sources: ["https://feed.example/rss"], lookbackHours: 12 });
+    expect(mocks.formatOnDemandNewsSummary).toHaveBeenCalledWith(expect.objectContaining({ lookbackHours: 12 }));
+  });
+
+  it("contains RSS fetch failures without sending an AI analysis or saving news items", async () => {
+    mocks.fetchRelevantNews.mockRejectedValue(new Error("RSS upstream unavailable"));
+    const newsCallback = { callback_query: { id: "callback-news", data: "news:summary:Binance:BTCUSDT:1h", message: { chat: { id: "chat-1" } } } };
+    await handleTelegramPaperWebhook(newsCallback);
+    expect(mocks.saveNewsItem).not.toHaveBeenCalled();
+    expect(mocks.formatOnDemandNewsSummary).not.toHaveBeenCalled();
+    expect(mocks.generateSignalAiAnalysis).not.toHaveBeenCalled();
+    expect(mocks.sendTelegramMessage).toHaveBeenCalledWith("bot-token", "chat-1", expect.stringContaining("Không thể tổng hợp RSS"), undefined);
+  });
 });
