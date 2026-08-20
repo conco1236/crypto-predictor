@@ -405,3 +405,10 @@
 - [x] Rà soát các tính năng mới theo mức độ tác động, độ an toàn và khả năng triển khai
 - [x] Kiểm thử responsive, checkpoint và báo cáo kết quả audit
 - [x] Đánh giá FEED STALE: không tái lập lỗi nghiệp vụ; sandbox không có session/WebSocket bên thứ ba, market REST/tRPC vẫn là nguồn snapshot kỹ thuật độc lập
+
+## User request: live feed fallback, diagnostics and build optimization
+
+- [x] Hiển thị REST snapshot fallback minh bạch khi WebSocket không sẵn sàng
+- [x] Thêm trang diagnostics cho trạng thái, freshness và latency theo Binance/Bybit/OKX
+- [x] Tối ưu production plugin scope: loại JSX location/debug collector khỏi production build; build vẫn phụ thuộc giới hạn bộ nhớ sandbox
+- [x] Viết tests, kiểm tra responsive, chạy build/regression và phát hành checkpoint
