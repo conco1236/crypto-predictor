@@ -1,6 +1,6 @@
 import type { MarketAnalysis } from "../market/binance";
 import type { NewsItem } from "../market/news";
-import { invokeLLM } from "../_core/llm";
+import { invokeTechnicalAi } from "./technicalAi";
 import { buildConfidenceTimelineUrl, type ConfidenceTimelineFilter } from "../../shared/confidenceTimelineLink";
 
 export type TelegramSendResult = { ok: boolean; result?: { message_id?: number }; description?: string; error_code?: number };
@@ -48,12 +48,12 @@ export async function sendTelegramMessage(botToken: string, chatId: string, text
   return payload ?? { ok: true };
 }
 
-export async function generateSignalAiAnalysis(analysis: MarketAnalysis, news: NewsItem[] = []) {
+export async function generateSignalAiAnalysis(userId: number, analysis: MarketAnalysis, news: NewsItem[] = []) {
   const i = analysis.indicators;
   const l = analysis.levels;
   try {
     const newsContext = news.length ? news.map(item => `- ${item.source} | ${new Date(item.publishedAt).toISOString()} | ${item.title} | ${item.url}`).join("\n") : "Không có tin liên quan trong 6 giờ gần nhất; không suy đoán tin tức.";
-    const response = await invokeLLM({
+    const response = await invokeTechnicalAi(userId, {
       messages: [
         { role: "system", content: "Bạn là chuyên gia phân tích crypto. Trả lời hoàn toàn bằng tiếng Việt, tối đa 3 câu, chỉ dùng dữ liệu được cung cấp. Nêu xu hướng, điều kiện xác nhận/vô hiệu hóa và rủi ro. Không bịa tin tức, không hứa hẹn lợi nhuận và nhắc đây không phải khuyến nghị đầu tư." },
         { role: "user", content: `Phân tích tín hiệu ${analysis.symbol} ${analysis.interval} trên ${analysis.exchange}. Xu hướng ${i.label}, trạng thái ${analysis.signalStatus ?? "Trade"}, lý do trạng thái ${analysis.signalReason ?? "không có"}, đồng thuận khung ${(analysis.timeframeConfirmation?.alignedIntervals ?? []).join(", ") || "không có"}, xung đột khung ${(analysis.timeframeConfirmation?.conflictingIntervals ?? []).join(", ") || "không có"}, điểm ${i.score}/100, confidence ${i.confidence}/100, RSI ${i.rsi.toFixed(1)}, ADX ${i.adx.toFixed(1)}, ATR ${i.atr.toFixed(2)}, volume x${i.volumeRatio.toFixed(2)}, liquidity ${analysis.liquidity?.isValid ? "đạt" : "không đạt"}, liquidity warnings ${(analysis.liquidity?.warnings ?? []).join("; ") || "không có"}, Entry ${l.entry.toFixed(2)}, TP1 ${l.takeProfit1.toFixed(2)}, SL ${l.stopLoss.toFixed(2)}. Lý do kỹ thuật: ${(i.reasons ?? []).slice(0, 4).join("; ")}. Tin tức có nguồn trong 6 giờ gần nhất:\n${newsContext}` },

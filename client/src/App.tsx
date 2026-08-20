@@ -13,10 +13,11 @@ import PlatformOverview from "./pages/PlatformOverview";
 import QualityAlertSettings from "./pages/QualityAlertSettings";
 import CommandCenter from "./pages/CommandCenter";
 import ConfidenceTimeline from "./pages/ConfidenceTimeline";
+import IntegrationSettings from "./pages/IntegrationSettings";
 
 function App() {
   const page = new URLSearchParams(window.location.search).get("page");
-  return <ErrorBoundary><ThemeProvider defaultTheme="dark" switchable><TooltipProvider><Toaster />{page === "backtest" ? <Backtest /> : page === "news" ? <NewsCenter /> : page === "glossary" ? <Glossary /> : page === "trading-bot" ? <TradingBot /> : page === "operations" ? <Operations /> : page === "diagnostics" ? <FeedDiagnostics /> : page === "platform" ? <PlatformOverview /> : page === "quality-alerts" ? <QualityAlertSettings /> : page === "command-center" ? <CommandCenter /> : page === "confidence-timeline" ? <ConfidenceTimeline /> : <Home />}</TooltipProvider></ThemeProvider></ErrorBoundary>;
+  return <ErrorBoundary><ThemeProvider defaultTheme="dark" switchable><TooltipProvider><Toaster />{page === "backtest" ? <Backtest /> : page === "news" ? <NewsCenter /> : page === "glossary" ? <Glossary /> : page === "trading-bot" ? <TradingBot /> : page === "operations" ? <Operations /> : page === "diagnostics" ? <FeedDiagnostics /> : page === "platform" ? <PlatformOverview /> : page === "quality-alerts" ? <QualityAlertSettings /> : page === "command-center" ? <CommandCenter /> : page === "confidence-timeline" ? <ConfidenceTimeline /> : page === "integrations" ? <IntegrationSettings /> : <Home />}</TooltipProvider></ThemeProvider></ErrorBoundary>;
 }
 
 export default App;

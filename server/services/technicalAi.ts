@@ -1,0 +1,57 @@
+import { getTechnicalAiSecret, getTechnicalAiSettings, type TechnicalAiMode } from "../db";
+import { invokeLLM, listLLMModels, type InvokeParams, type InvokeResult } from "../_core/llm";
+
+const AUTO_PREFERENCES = ["gpt-5-nano", "gpt-5-mini", "claude-haiku-4-5", "gemini-3-flash-preview"];
+const MODEL_ID = /^[a-zA-Z0-9._:-]{1,160}$/;
+const CACHE_MS = 5 * 60_000;
+let modelCache: { expiresAt: number; ids: string[] } | undefined;
+
+export type AvailableTechnicalModel = { id: string; source: "workspace"; autoEligible: boolean };
+
+export async function getAvailableTechnicalModels() {
+  if (modelCache && modelCache.expiresAt > Date.now()) return modelCache.ids.map(id => ({ id, source: "workspace" as const, autoEligible: AUTO_PREFERENCES.includes(id) }));
+  const response = await listLLMModels();
+  const ids = response.data.map(model => model.id).filter(id => MODEL_ID.test(id)).sort();
+  modelCache = { ids, expiresAt: Date.now() + CACHE_MS };
+  return ids.map(id => ({ id, source: "workspace" as const, autoEligible: AUTO_PREFERENCES.includes(id) }));
+}
+
+export function selectAutomaticTechnicalModel(ids: string[]) {
+  return AUTO_PREFERENCES.find(id => ids.includes(id)) ?? ids[0] ?? null;
+}
+
+export function validateManualApiBaseUrl(value: string) {
+  const url = new URL(value);
+  const host = url.hostname.toLowerCase();
+  const privateIpv4 = /^(127\.|0\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(host);
+  if (url.protocol !== "https:" || host === "localhost" || host.endsWith(".local") || host.endsWith(".internal") || privateIpv4) throw new Error("API endpoint phải là HTTPS public; không dùng localhost hoặc địa chỉ private");
+  return url.toString().replace(/\/$/, "");
+}
+
+function manualCompletionUrl(baseUrl: string) {
+  const url = validateManualApiBaseUrl(baseUrl);
+  return /\/chat\/completions$/.test(url) ? url : `${url.replace(/\/$/, "")}/v1/chat/completions`;
+}
+
+async function invokeManualOpenAiCompatible(baseUrl: string, apiKey: string, params: InvokeParams, model: string): Promise<InvokeResult> {
+  const response = await fetch(manualCompletionUrl(baseUrl), { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ model, messages: params.messages, max_tokens: params.maxTokens ?? params.max_tokens ?? 700 }) });
+  if (!response.ok) throw new Error(`Manual AI API trả về HTTP ${response.status}`);
+  return await response.json() as InvokeResult;
+}
+
+export async function invokeTechnicalAi(userId: number, params: InvokeParams) {
+  const settings = await getTechnicalAiSettings(userId);
+  const mode = settings.mode as TechnicalAiMode;
+  if (mode === "manual_api") {
+    if (!settings.apiBaseUrl) throw new Error("Cần nhập API endpoint cho Manual API");
+    const apiKey = await getTechnicalAiSecret(userId);
+    if (!apiKey) throw new Error("Cần nhập API key cho Manual API");
+    if (!MODEL_ID.test(settings.model)) throw new Error("Model Manual API không hợp lệ");
+    return invokeManualOpenAiCompatible(settings.apiBaseUrl, apiKey, params, settings.model);
+  }
+  const models = await getAvailableTechnicalModels();
+  const ids = models.map(model => model.id);
+  const model = mode === "workspace_model" && ids.includes(settings.model) ? settings.model : selectAutomaticTechnicalModel(ids);
+  if (!model) throw new Error("Không có model AI workspace khả dụng");
+  return invokeLLM({ ...params, model });
+}

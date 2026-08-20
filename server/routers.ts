@@ -1,6 +1,6 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
-import { invokeLLM } from "./_core/llm";
+import type { InvokeResult } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
@@ -11,13 +11,14 @@ import { calibrateConfidence, evaluateSignalOutcome, summarizeOutcomes } from ".
 import { summarizeQualityBacktest } from "./market/qualityMetrics";
 import { buildQualityAlertPreview, resolveQualityThreshold } from "./services/qualityThresholds";
 import { fetchRelevantNews } from "./market/news";
-import { createReanalysisRequest, createTelegramDeliveryLog, deleteQualityThresholdOverride, deleteTelegramAlertRule, getConfidenceEarlyWarnings, getConfidenceHistory, getHeartbeatHistory, getHeartbeatHistoryPage, getLastSignal, getMomentumCriticalAlertHistory, getMomentumSettings, getProcessedCandle, getQualityThresholdHistory, getQualityThresholdOverrides, getRecentReanalysis, getRiskHistories, getRiskHistory, getSignalHistory, getSignalSnapshotById, getTelegramAlertRules, getTelegramDeliveryHistory, getTelegramDeliveryHistoryPage, getTelegramDeliveryLog, getTelegramDeliveryLogById, getTelegramSettings, getSignalOutcomes, getNewsAiSettings, getNewsHistory, getNewsHistoryPage, getAiHistory, getAiHistoryPage, markProcessedCandle, saveAiAnalysis, saveMomentumSettings, saveNewsAiSettings, saveNewsItem, saveQualityThresholdOverride, saveSignalSnapshot, saveTelegramSettings, updateReanalysisRequest, updateTelegramDeliveryLog, upsertSignalOutcome, upsertTelegramAlertRule, createPaperTrade, getPaperTrades, updatePaperTrade, createPaperBotAudit, getPaperBotAudit, updatePaperReportSettings } from "./db";
+import { createReanalysisRequest, createTelegramDeliveryLog, deleteQualityThresholdOverride, deleteTelegramAlertRule, getConfidenceEarlyWarnings, getConfidenceHistory, getHeartbeatHistory, getHeartbeatHistoryPage, getLastSignal, getMomentumCriticalAlertHistory, getMomentumSettings, getProcessedCandle, getQualityThresholdHistory, getQualityThresholdOverrides, getRecentReanalysis, getRiskHistories, getRiskHistory, getSignalHistory, getSignalSnapshotById, getTechnicalAiSettings, getTelegramAlertRules, getTelegramDeliveryHistory, getTelegramDeliveryHistoryPage, getTelegramDeliveryLog, getTelegramDeliveryLogById, getTelegramSettings, getSignalOutcomes, getNewsAiSettings, getNewsHistory, getNewsHistoryPage, getAiHistory, getAiHistoryPage, markProcessedCandle, saveAiAnalysis, saveMomentumSettings, saveNewsAiSettings, saveNewsItem, saveQualityThresholdOverride, saveSignalSnapshot, saveTechnicalAiSettings, saveTelegramSettings, updateReanalysisRequest, updateTelegramDeliveryLog, upsertSignalOutcome, upsertTelegramAlertRule, createPaperTrade, getPaperTrades, updatePaperTrade, createPaperBotAudit, getPaperBotAudit, updatePaperReportSettings } from "./db";
 import { buildSignalInlineKeyboard, formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./services/telegram";
 import { resolveAlertRule } from "./services/alertRules";
 import { isPaperBotPaused } from "./services/telegramWebhook";
 import { getMockCredentialStatus, validateDryRunOrder, type MockExchange } from "./services/mockCex";
+import { getAvailableTechnicalModels, invokeTechnicalAi, validateManualApiBaseUrl } from "./services/technicalAi";
 
-function responseText(response: Awaited<ReturnType<typeof invokeLLM>>) {
+function responseText(response: InvokeResult) {
   const content = response.choices?.[0]?.message?.content;
   return typeof content === "string" ? content : JSON.stringify(content ?? "");
 }
@@ -48,9 +49,9 @@ export const appRouter = router({
   }),
   market: router({
     all: protectedProcedure.query(async () => analyzeAllMarkets()),
-    aiSummary: protectedProcedure.input(analysisInput).mutation(async ({ input }) => {
+    aiSummary: protectedProcedure.input(analysisInput).mutation(async ({ ctx, input }) => {
       const compact = input.map(item => `${item.exchange} — ${item.symbol} ${item.interval}: ${item.label} score ${item.score}, trạng thái ${item.signalStatus ?? "Trade"}, lý do ${item.signalReason ?? "không có"}, giá ${item.price}, RSI ${item.rsi.toFixed(1)}, ADX ${item.adx.toFixed(1)}, ATR ${item.atr.toFixed(2)}, volume x${item.volumeRatio.toFixed(2)}, Entry ${item.entry.toFixed(2)}, TP ${item.takeProfit1.toFixed(2)}, SL ${item.stopLoss.toFixed(2)}, liquidity ${item.liquidityWarnings?.join("; ") || "đạt"}; ${item.reasons.join(", ")}`).join("\n");
-      const result = await invokeLLM({
+      const result = await invokeTechnicalAi(ctx.user.id, {
         messages: [
           { role: "system", content: "Bạn là chuyên gia phân tích thị trường crypto. Hãy trả lời hoàn toàn bằng tiếng Việt, ngắn gọn nhưng sâu sắc. Chỉ sử dụng dữ liệu được cung cấp, không bịa thêm giá hoặc tin tức. Nêu rõ xu hướng chính, sự đồng thuận đa khung, rủi ro và điều kiện vô hiệu hóa. Đây là thông tin tham khảo, không phải khuyến nghị đầu tư." },
           { role: "user", content: `Phân tích dữ liệu kỹ thuật BTC/ETH đa khung sau đây và viết bản tóm tắt có cấu trúc với các tiêu đề: Bối cảnh, Tín hiệu chính, Kịch bản, Rủi ro.\n\n${compact}` },
@@ -88,7 +89,7 @@ export const appRouter = router({
         const aiEnabled = newsSettings?.enabled !== 0 && configuredIntervals.includes(a.interval);
         const news = aiEnabled && a.interval === "1h" ? await fetchRelevantNews(a.symbol, Date.now(), { sources: JSON.parse(newsSettings?.rssSources ?? "[]") as string[], lookbackHours: newsSettings?.newsLookbackHours ?? 6 }) : [];
         for (const item of news) await saveNewsItem(ctx.user.id, { symbol: a.symbol, source: item.source, url: item.url, title: item.title, summary: item.summary, publishedAt: item.publishedAt });
-        const aiAnalysis = aiEnabled ? await generateSignalAiAnalysis(calibratedAnalysis, news) : "Phân tích AI đã tắt trong cài đặt người dùng; tín hiệu kỹ thuật vẫn được lưu.";
+        const aiAnalysis = aiEnabled ? await generateSignalAiAnalysis(ctx.user.id, calibratedAnalysis, news) : "Phân tích AI đã tắt trong cài đặt người dùng; tín hiệu kỹ thuật vẫn được lưu.";
         await saveAiAnalysis(ctx.user.id, { symbol: a.symbol, interval: a.interval, analysis: aiAnalysis, newsItemIds: [] });
         const message = formatSignalAlert(calibratedAnalysis, aiAnalysis, news);
         const delivery = await createTelegramDeliveryLog({ userId: ctx.user.id, exchange: a.exchange, interval: a.interval, symbol: a.symbol, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt, label: a.indicators.label, score: a.indicators.score, message });
@@ -117,7 +118,7 @@ export const appRouter = router({
       try {
         const settings = await getNewsAiSettings(ctx.user.id);
         const news = snapshot.interval === "1h" ? await fetchRelevantNews(snapshot.symbol as SymbolName, Date.now(), { sources: JSON.parse(settings?.rssSources ?? "[]") as string[], lookbackHours: settings?.newsLookbackHours ?? 6 }) : [];
-        const result = await invokeLLM({ messages: [{ role: "system", content: "Bạn là chuyên gia phân tích crypto. Viết bằng tiếng Việt, chỉ dùng dữ liệu được cung cấp, nêu bối cảnh, tín hiệu, rủi ro và điều kiện vô hiệu hóa. Không đưa ra cam kết lợi nhuận." }, { role: "user", content: `Phân tích lại tín hiệu cũ ${snapshot.symbol} ${snapshot.interval}. Giá ${snapshot.price}; Entry ${snapshot.entry}; TP1 ${snapshot.takeProfit1}; TP2 ${snapshot.takeProfit2}; SL ${snapshot.stopLoss}; chỉ báo ${snapshot.indicators}; tin tức: ${news.map(item => `${item.title} (${item.source}, ${new Date(item.publishedAt).toISOString()})`).join(" | ") || "không có tin"}` }], reasoning: { effort: "low" }});
+      const result = await invokeTechnicalAi(ctx.user.id, { messages: [{ role: "system", content: "Bạn là chuyên gia phân tích crypto. Viết bằng tiếng Việt, chỉ dùng dữ liệu được cung cấp, nêu bối cảnh, tín hiệu, rủi ro và điều kiện vô hiệu hóa. Không đưa ra cam kết lợi nhuận." }, { role: "user", content: `Phân tích lại tín hiệu cũ ${snapshot.symbol} ${snapshot.interval}. Giá ${snapshot.price}; Entry ${snapshot.entry}; TP1 ${snapshot.takeProfit1}; TP2 ${snapshot.takeProfit2}; SL ${snapshot.stopLoss}; chỉ báo ${snapshot.indicators}; tin tức: ${news.map(item => `${item.title} (${item.source}, ${new Date(item.publishedAt).toISOString()})`).join(" | ") || "không có tin"}` }], reasoning: { effort: "low" }});
         const analysis = responseText(result);
         await saveAiAnalysis(ctx.user.id, { snapshotId: snapshot.id, symbol: snapshot.symbol, interval: snapshot.interval, analysis });
         await updateReanalysisRequest(requestId, { status: "completed" });
@@ -176,6 +177,20 @@ export const appRouter = router({
     history: protectedProcedure.input(z.object({ limit: z.number().int().min(1).max(200).default(50), symbol: z.string().max(20).optional() }).optional()).query(({ ctx, input }) => getNewsHistory(ctx.user.id, input?.limit ?? 50, input?.symbol)),
     historyPage: protectedProcedure.input(z.object({ page: z.number().int().min(1).default(1), pageSize: z.number().int().min(5).max(50).default(20), symbol: z.string().max(20).optional() }).optional()).query(({ ctx, input }) => getNewsHistoryPage(ctx.user.id, input?.page ?? 1, input?.pageSize ?? 20, input?.symbol)),
     aiHistory: protectedProcedure.input(z.object({ limit: z.number().int().min(1).max(200).default(50), symbol: z.string().max(20).optional(), interval: z.enum(["15m", "1h", "4h", "1d"]).optional() }).optional()).query(({ ctx, input }) => getAiHistory(ctx.user.id, input?.limit ?? 50, { symbol: input?.symbol, interval: input?.interval })),
+    technicalAiSettings: protectedProcedure.query(async ({ ctx }) => ({ settings: await getTechnicalAiSettings(ctx.user.id), models: await getAvailableTechnicalModels() })),
+    saveTechnicalAiSettings: protectedProcedure.input(z.object({ mode: z.enum(["workspace_auto", "workspace_model", "manual_api"]), model: z.string().min(1).max(160), apiBaseUrl: z.string().max(500).optional(), apiKey: z.string().min(8).max(2000).optional() })).mutation(async ({ ctx, input }) => {
+      const models = await getAvailableTechnicalModels();
+      const isWorkspaceModel = models.some(model => model.id === input.model);
+      if (input.mode === "workspace_model" && !isWorkspaceModel) throw new Error("Model không còn trong catalog workspace hiện hành");
+      if (input.mode === "workspace_auto" && !models.some(model => model.autoEligible)) throw new Error("Chưa có model tự động khả dụng trong catalog workspace");
+      const current = await getTechnicalAiSettings(ctx.user.id);
+      if (input.mode === "manual_api") {
+        if (!input.apiBaseUrl) throw new Error("Cần nhập API endpoint cho Manual API");
+        validateManualApiBaseUrl(input.apiBaseUrl);
+        if (!input.apiKey && !current.hasApiKey) throw new Error("Cần nhập API key cho Manual API lần đầu");
+      }
+      return saveTechnicalAiSettings(ctx.user.id, { mode: input.mode, model: input.model, apiBaseUrl: input.mode === "manual_api" ? input.apiBaseUrl : null, apiKey: input.apiKey });
+    }),
     aiHistoryPage: protectedProcedure.input(z.object({ page: z.number().int().min(1).default(1), pageSize: z.number().int().min(5).max(50).default(20), symbol: z.string().max(20).optional(), interval: z.enum(["15m", "1h", "4h", "1d"]).optional() }).optional()).query(({ ctx, input }) => getAiHistoryPage(ctx.user.id, input?.page ?? 1, input?.pageSize ?? 20, { symbol: input?.symbol, interval: input?.interval })),
   }),
   telegram: router({

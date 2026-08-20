@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/mysql2";
 import { and, desc, eq, gt, like } from "drizzle-orm";
-import { aiAnalyses, aiReanalysisRequests, heartbeatRuns, InsertUser, momentumCriticalAlerts, momentumSettings, newsAiSettings, newsItems, paperBotAuditLogs, paperTrades, signalOutcomes, signalProcessingState, signalSnapshots, telegramAlertRules, telegramDeliveryLogs, telegramQualityThresholdHistory, telegramQualityThresholdOverrides, telegramSettings, users } from "../drizzle/schema";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { aiAnalyses, aiReanalysisRequests, heartbeatRuns, InsertUser, momentumCriticalAlerts, momentumSettings, newsAiSettings, newsItems, paperBotAuditLogs, paperTrades, signalOutcomes, signalProcessingState, signalSnapshots, technicalAiSettings, telegramAlertRules, telegramDeliveryLogs, telegramQualityThresholdHistory, telegramQualityThresholdOverrides, telegramSettings, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { classifyConfidenceMomentum, DEFAULT_MOMENTUM_THRESHOLDS, normalizeMomentumThresholds } from "../shared/confidenceMomentum";
 
@@ -366,6 +367,55 @@ export async function saveNewsAiSettings(userId: number, input: { rssSources: st
   if (!db) throw new Error("Database chưa sẵn sàng");
   await db.insert(newsAiSettings).values({ userId, rssSources: JSON.stringify(input.rssSources), newsLookbackHours: input.newsLookbackHours, aiIntervals: JSON.stringify(input.aiIntervals), enabled: input.enabled }).onDuplicateKeyUpdate({ set: { rssSources: JSON.stringify(input.rssSources), newsLookbackHours: input.newsLookbackHours, aiIntervals: JSON.stringify(input.aiIntervals), enabled: input.enabled, updatedAt: new Date() } });
   return getNewsAiSettings(userId);
+}
+
+export type TechnicalAiMode = "workspace_auto" | "workspace_model" | "manual_api";
+export const DEFAULT_TECHNICAL_AI_SETTINGS = { mode: "workspace_auto" as const, model: "gpt-5-nano", apiBaseUrl: null, hasApiKey: false, apiKeyMasked: null };
+
+function encryptionKey() {
+  if (!ENV.cookieSecret) throw new Error("Server secret chưa sẵn sàng để bảo vệ AI API key");
+  return createHash("sha256").update(ENV.cookieSecret).digest();
+}
+
+export function encryptTechnicalAiKey(value: string) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", encryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
+  return `v1:${iv.toString("base64url")}:${cipher.getAuthTag().toString("base64url")}:${encrypted.toString("base64url")}`;
+}
+
+export function decryptTechnicalAiKey(value: string) {
+  const [version, ivText, tagText, dataText] = value.split(":");
+  if (version !== "v1" || !ivText || !tagText || !dataText) throw new Error("AI API key đã lưu có định dạng không hợp lệ");
+  const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), Buffer.from(ivText, "base64url"));
+  decipher.setAuthTag(Buffer.from(tagText, "base64url"));
+  return Buffer.concat([decipher.update(Buffer.from(dataText, "base64url")), decipher.final()]).toString("utf8");
+}
+
+export async function getTechnicalAiSettings(userId: number) {
+  const db = await getDb();
+  if (!db) return { userId, ...DEFAULT_TECHNICAL_AI_SETTINGS };
+  const result = await db.select().from(technicalAiSettings).where(eq(technicalAiSettings.userId, userId)).limit(1);
+  const row = result[0];
+  if (!row) return { userId, ...DEFAULT_TECHNICAL_AI_SETTINGS };
+  return { ...row, hasApiKey: Boolean(row.apiKeyCiphertext), apiKeyMasked: row.apiKeyCiphertext ? "••••••••" : null, apiKeyCiphertext: undefined };
+}
+
+export async function getTechnicalAiSecret(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(technicalAiSettings).where(eq(technicalAiSettings.userId, userId)).limit(1);
+  return result[0]?.apiKeyCiphertext ? decryptTechnicalAiKey(result[0].apiKeyCiphertext) : undefined;
+}
+
+export async function saveTechnicalAiSettings(userId: number, input: { mode: TechnicalAiMode; model: string; apiBaseUrl?: string | null; apiKey?: string | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database chưa sẵn sàng");
+  const current = await db.select().from(technicalAiSettings).where(eq(technicalAiSettings.userId, userId)).limit(1);
+  const apiKeyCiphertext = input.apiKey === undefined ? current[0]?.apiKeyCiphertext ?? null : input.apiKey ? encryptTechnicalAiKey(input.apiKey) : null;
+  const values = { userId, mode: input.mode, model: input.model, apiBaseUrl: input.apiBaseUrl ?? null, apiKeyCiphertext };
+  await db.insert(technicalAiSettings).values(values).onDuplicateKeyUpdate({ set: { mode: values.mode, model: values.model, apiBaseUrl: values.apiBaseUrl, apiKeyCiphertext: values.apiKeyCiphertext, updatedAt: new Date() } });
+  return getTechnicalAiSettings(userId);
 }
 
 export async function saveNewsItem(userId: number, input: { symbol: string; source: string; url: string; title: string; summary?: string; publishedAt: number }) {

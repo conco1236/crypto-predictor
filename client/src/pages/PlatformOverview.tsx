@@ -13,6 +13,7 @@ const modules = [
   { title: "Quality Alerts", description: "Tùy chỉnh ngưỡng quality penalty để Telegram cảnh báo khi confidence bị giảm mạnh do dữ liệu hoặc thanh khoản.", href: "/?page=quality-alerts", action: "Cấu hình cảnh báo", icon: BellRing, tone: "text-rose-400 bg-rose-500/10 border-rose-500/20" },
   { title: "Command Center", description: "Scorecard vận hành cho feed, Telegram delivery, Heartbeat, quality posture và sandbox P&L.", href: "/?page=command-center", action: "Mở Command Center", icon: LayoutDashboard, tone: "text-sky-400 bg-sky-500/10 border-sky-500/20" },
   { title: "Confidence Timeline", description: "Theo dõi confidence sau quality gate theo BTC/ETH, sàn và các khung 15m, 1h, 4h, 1d từ snapshot lịch sử.", href: "/?page=confidence-timeline", action: "Mở Confidence Timeline", icon: ChartNoAxesCombined, tone: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20" },
+  { title: "Telegram & AI", description: "Cập nhật Bot Token, Chat ID, model AI workspace hoặc Manual API theo tài khoản với token được che và xử lý phía server.", href: "/?page=integrations", action: "Mở cài đặt", icon: Bot, tone: "text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/20" },
 ];
 
 function RecentDryRunPanel() {

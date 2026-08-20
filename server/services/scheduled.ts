@@ -133,7 +133,7 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
             const aiEnabled = newsSettings?.enabled !== 0 && configuredIntervals.includes(a.interval);
             const news = aiEnabled && a.interval === "1h" ? await fetchRelevantNews(a.symbol, Date.now(), { sources: JSON.parse(newsSettings?.rssSources ?? "[]") as string[], lookbackHours: newsSettings?.newsLookbackHours ?? 6 }) : [];
             for (const item of news) await saveNewsItem(userId, { symbol: a.symbol, source: item.source, url: item.url, title: item.title, summary: item.summary, publishedAt: item.publishedAt });
-            const aiAnalysis = aiEnabled ? await generateSignalAiAnalysis(calibratedAnalysis, news) : "Phân tích AI đã tắt trong cài đặt người dùng; tín hiệu kỹ thuật vẫn được lưu.";
+            const aiAnalysis = aiEnabled ? await generateSignalAiAnalysis(userId, calibratedAnalysis, news) : "Phân tích AI đã tắt trong cài đặt người dùng; tín hiệu kỹ thuật vẫn được lưu.";
             await saveAiAnalysis(userId, { symbol: a.symbol, interval: a.interval, analysis: aiAnalysis });
             currentDelivery = await createTelegramDeliveryLog({ userId, taskUid, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt, label: a.indicators.label, score: a.indicators.score, message: formatSignalAlert(calibratedAnalysis, aiAnalysis, news) });
         } else {

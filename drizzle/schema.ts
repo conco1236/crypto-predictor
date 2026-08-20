@@ -151,6 +151,17 @@ export const newsAiSettings = mysqlTable("news_ai_settings", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => ({ settingsUserUnique: uniqueIndex("news_ai_settings_user_unique").on(table.userId) }));
 
+export const technicalAiSettings = mysqlTable("technical_ai_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  mode: mysqlEnum("mode", ["workspace_auto", "workspace_model", "manual_api"]).default("workspace_auto").notNull(),
+  model: varchar("model", { length: 160 }).default("gpt-5-nano").notNull(),
+  apiBaseUrl: varchar("apiBaseUrl", { length: 500 }),
+  apiKeyCiphertext: text("apiKeyCiphertext"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({ settingsUserUnique: uniqueIndex("technical_ai_settings_user_unique").on(table.userId) }));
+
 export const newsItems = mysqlTable("news_items", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),

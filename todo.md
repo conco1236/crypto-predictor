@@ -515,3 +515,23 @@
 
 - [x] Đồng bộ deep link và focus nến Critical lên GitHub main
 - [x] Xác minh commit GitHub remote khớp workspace
+
+## User request: Telegram bot token and chat ID settings UI
+
+- [x] Rà soát contract settings, masking và validation Bot Token/Chat ID theo user scope
+- [x] Thêm form cài đặt Telegram để lưu/cập nhật token và chat ID an toàn
+- [x] Kiểm thử secret masking, ownership, validation, responsive và phát hành checkpoint
+
+## User request: AI token and free-model selection
+
+- [x] Rà soát cấu hình AI hiện có, catalog model live và chính sách khóa AI theo user scope
+- [x] Thêm persistence an toàn cho AI provider token masked và lựa chọn model được allowlist
+- [x] Cập nhật AI technical analysis để dùng model người dùng chọn qua server-side contract
+- [x] Thêm giao diện cài đặt Telegram + AI, kiểm thử masking, ownership, model validation và phát hành checkpoint
+
+## User request: manual AI API and automatic available-model selection
+
+- [x] Xây cài đặt API endpoint/key thủ công với mã hóa server-side, masking và ownership
+- [x] Tạo allowlist từ catalog model live và auto-select chỉ giữa model khả dụng
+- [x] Áp dụng model/API selection vào phân tích kỹ thuật và AI analysis theo nến
+- [x] Hoàn thiện giao diện unified Telegram + AI, kiểm thử secret/model routing và phát hành checkpoint
