@@ -3,7 +3,7 @@ import { parseConfidenceSnapshot } from "./db";
 import * as db from "./db";
 import { appRouter } from "./routers";
 import { ABRUPT_CONFIDENCE_DROP_POINTS, annotateConfidenceDrops, summarizeConfidenceTimeline } from "../client/src/lib/confidenceTimeline";
-import { classifyConfidenceMomentum } from "../shared/confidenceMomentum";
+import { classifyConfidenceMomentum, detectCriticalMomentumTransition } from "../shared/confidenceMomentum";
 
 describe("confidence timeline contracts", () => {
   const createdAt = new Date("2026-08-20T00:00:00.000Z");
@@ -31,6 +31,12 @@ describe("confidence timeline contracts", () => {
     expect(classifyConfidenceMomentum(points, { criticalDropThreshold: 10, deterioratingDropThreshold: 5 }).status).toBe("critical");
     expect(classifyConfidenceMomentum(points, { criticalDropThreshold: 20, deterioratingDropThreshold: 10 }).status).toBe("deteriorating");
   });
+  it("alerts only when a sequence transitions into Critical, not while it remains Critical", () => {
+    const history = [{ candleClosedAt: 1, confidence: 80, penalty: 0, isTradeEligible: true as const, label: "Bullish" as const }, { candleClosedAt: 2, confidence: 74, penalty: 1, isTradeEligible: true as const, label: "Bullish" as const }];
+    const current = { candleClosedAt: 3, confidence: 55, penalty: 24, isTradeEligible: false as const, label: "Neutral" as const };
+    expect(detectCriticalMomentumTransition(history, current).transitioned).toBe(true);
+    expect(detectCriticalMomentumTransition([...history, current], { ...current, candleClosedAt: 4, confidence: 52 }).transitioned).toBe(false);
+  });
   it("queries the protected confidence history with asset, exchange, timeframe and user scope", async () => {
     const mocked = vi.spyOn(db, "getConfidenceHistory").mockResolvedValue([]);
     const caller = appRouter.createCaller({ req: {} as any, res: {} as any, user: { id: 9, openId: "timeline-user", name: "Timeline", email: null, loginMethod: null, role: "user", createdAt, updatedAt: createdAt, lastSignedIn: createdAt } });
@@ -50,6 +56,13 @@ describe("confidence timeline contracts", () => {
     const caller = appRouter.createCaller({ req: {} as any, res: {} as any, user: { id: 9, openId: "timeline-user", name: "Timeline", email: null, loginMethod: null, role: "user", createdAt, updatedAt: createdAt, lastSignedIn: createdAt } });
     await expect(caller.market.saveMomentumSettings({ criticalDropThreshold: 16, deterioratingDropThreshold: 7 })).resolves.toMatchObject({ userId: 9 });
     expect(mocked).toHaveBeenCalledWith(9, { criticalDropThreshold: 16, deterioratingDropThreshold: 7 });
+    mocked.mockRestore();
+  });
+  it("queries Critical Telegram alert audit only within the authenticated user scope", async () => {
+    const mocked = vi.spyOn(db, "getMomentumCriticalAlertHistory").mockResolvedValue([]);
+    const caller = appRouter.createCaller({ req: {} as any, res: {} as any, user: { id: 9, openId: "timeline-user", name: "Timeline", email: null, loginMethod: null, role: "user", createdAt, updatedAt: createdAt, lastSignedIn: createdAt } });
+    await expect(caller.market.momentumCriticalAlertHistory({ limit: 8 })).resolves.toEqual([]);
+    expect(mocked).toHaveBeenCalledWith(9, 8);
     mocked.mockRestore();
   });
 });

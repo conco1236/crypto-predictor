@@ -2,7 +2,11 @@ import type { Request, Response } from "express";
 import { sdk } from "../_core/sdk";
 import {
   createTelegramDeliveryLog,
+  createMomentumCriticalAlert,
+  getConfidenceHistory,
   getLastSignal,
+  getMomentumCriticalAlert,
+  getMomentumSettings,
   getProcessedCandle,
   getSignalOutcomes,
   getTelegramDeliveryLog,
@@ -15,6 +19,7 @@ import {
   saveHeartbeatRun,
   saveNewsItem,
   saveSignalSnapshot,
+  updateMomentumCriticalAlert,
   updateTelegramDeliveryLog,
   getTelegramSettingsByPaperReportTaskUid,
   getClosedPaperTradesForDate,
@@ -24,9 +29,10 @@ import {
 import { analyzeAllMarkets } from "../market/binance";
 import { fetchRelevantNews } from "../market/news";
 import { calibrateConfidence } from "../market/outcomes";
-import { buildSignalInlineKeyboard, formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./telegram";
+import { buildSignalInlineKeyboard, formatMomentumCriticalAlert, formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./telegram";
 import { resolveAlertRule } from "./alertRules";
 import { resolveQualityThreshold } from "./qualityThresholds";
+import { detectCriticalMomentumTransition } from "../../shared/confidenceMomentum";
 
 function utcDateKey(offsetDays = 0) {
   const date = new Date(Date.now() + offsetDays * 86_400_000);
@@ -78,6 +84,7 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
   let taskUid: string | undefined;
   let saved = 0;
   let alerts = 0;
+  let criticalAlerts = 0;
   let skipped = 0;
   try {
     const user = await sdk.authenticateRequest(req);
@@ -88,6 +95,7 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
     userId = settings.userId;
     const rules = await getTelegramAlertRules(userId);
     const qualityOverrides = await getQualityThresholdOverrides(userId);
+    const momentumSettings = await getMomentumSettings(userId);
     const newsSettings = await getNewsAiSettings(userId);
     const persistedOutcomes = await getSignalOutcomes(userId, 200);
     const analyses = await analyzeAllMarkets();
@@ -96,19 +104,28 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
       const key = { exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime };
       const alertSettings = resolveAlertRule(settings, rules, { exchange: a.exchange, symbol: a.symbol, interval: a.interval });
       const delivery = await getTelegramDeliveryLog(userId, key);
+      const criticalAlert = await getMomentumCriticalAlert(userId, key);
       const processed = await getProcessedCandle(userId, a.exchange, a.symbol, a.interval);
       const newClosedCandle = !processed || processed.candleOpenTime < a.candleOpenTime;
       const pendingDelivery = delivery && delivery.status !== "sent";
-      if (!newClosedCandle && !pendingDelivery) { skipped++; continue; }
+      const pendingCriticalAlert = criticalAlert && criticalAlert.status !== "sent";
+      if (!newClosedCandle && !pendingDelivery && !pendingCriticalAlert) { skipped++; continue; }
 
       let currentDelivery = delivery;
-      if (!currentDelivery) {
+      let currentCriticalAlert = criticalAlert;
+      if (!currentDelivery && newClosedCandle) {
           const strongSignal = (a.signalStatus ?? "Trade") === "Trade" && (a.liquidity?.isValid ?? true) && Math.abs(a.indicators.score) >= alertSettings.alertThreshold;
           const qualityAlert = (a.signalQuality?.penalty ?? 0) >= resolveQualityThreshold(a.exchange, alertSettings.qualityAlertThreshold ?? 20, qualityOverrides);
           const modeAllowsAlert = (alertSettings.sendMode ?? "all_candles") === "all_candles" || strongSignal || qualityAlert;
           const shouldAlert = Boolean(alertSettings.enabled && alertSettings.botToken && alertSettings.chatId && modeAllowsAlert);
+        const priorConfidence = await getConfidenceHistory(userId, a.exchange, a.symbol, a.interval, 2);
         await saveSignalSnapshot({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, label: a.indicators.label, score: a.indicators.score, price: a.price, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, risk: a.risk, signalQuality: a.signalQuality, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
         saved++;
+        const currentConfidence = { candleClosedAt: a.candleClosedAt, confidence: Number(a.indicators.confidence ?? 0), penalty: a.signalQuality?.penalty ?? null, isTradeEligible: a.signalQuality?.isTradeEligible ?? null, label: a.indicators.label } as const;
+        const momentumTransition = detectCriticalMomentumTransition(priorConfidence, currentConfidence, momentumSettings);
+        if (momentumTransition.transitioned && alertSettings.enabled && alertSettings.botToken && alertSettings.chatId) {
+          currentCriticalAlert = await createMomentumCriticalAlert({ userId, taskUid, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt, previousConfidence: momentumTransition.previous.latest?.confidence ?? null, confidence: currentConfidence.confidence, delta: momentumTransition.next.recentDelta, reason: momentumTransition.next.reason, message: formatMomentumCriticalAlert({ exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleClosedAt: a.candleClosedAt, previousConfidence: momentumTransition.previous.latest?.confidence ?? null, confidence: currentConfidence.confidence, delta: momentumTransition.next.recentDelta, reason: momentumTransition.next.reason, penalty: currentConfidence.penalty, isTradeEligible: currentConfidence.isTradeEligible }) });
+        }
         if (shouldAlert) {
             const calibrated = calibrateConfidence(a.indicators.confidence, persistedOutcomes.map(row => ({ direction: a.indicators.label, signalCandleOpenTime: row.signalCandleOpenTime, result: row.outcome, exitCandleOpenTime: row.exitCandleOpenTime ?? undefined, exitPrice: row.exitPrice ?? undefined, returnPercent: row.returnPercent, candlesObserved: row.candlesObserved, reason: row.reason ?? "" })));
             const calibratedAnalysis = { ...a, indicators: { ...a.indicators, confidence: calibrated.confidence } };
@@ -120,8 +137,20 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
             await saveAiAnalysis(userId, { symbol: a.symbol, interval: a.interval, analysis: aiAnalysis });
             currentDelivery = await createTelegramDeliveryLog({ userId, taskUid, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt, label: a.indicators.label, score: a.indicators.score, message: formatSignalAlert(calibratedAnalysis, aiAnalysis, news) });
         } else {
-          await markProcessedCandle({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
-          continue;
+          currentDelivery = undefined;
+        }
+      }
+
+      if (currentCriticalAlert && currentCriticalAlert.status !== "sent") {
+        const attempts = currentCriticalAlert.attempts + 1;
+        await updateMomentumCriticalAlert(currentCriticalAlert.id, { status: "pending", attempts, lastError: null });
+        try {
+          const result = await sendTelegramMessage(alertSettings.botToken, alertSettings.chatId, currentCriticalAlert.message ?? "<b>⚠️ Momentum Critical</b>");
+          await updateMomentumCriticalAlert(currentCriticalAlert.id, { status: "sent", telegramMessageId: result.result?.message_id ? String(result.result.message_id) : null, lastError: null, sentAt: new Date() });
+          alerts++; criticalAlerts++;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          await updateMomentumCriticalAlert(currentCriticalAlert.id, { status: "failed", lastError: message });
         }
       }
 
@@ -146,7 +175,7 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
 
     const durationMs = Date.now() - startedMs;
     await saveHeartbeatRun({ userId, taskUid, status: "success", savedCount: saved, alertCount: alerts, skippedCount: skipped, durationMs, startedAt, finishedAt: new Date() });
-    return res.json({ ok: true, saved, alerts, skipped, durationMs });
+    return res.json({ ok: true, saved, alerts, criticalAlerts, skipped, durationMs });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (userId && taskUid) {

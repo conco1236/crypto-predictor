@@ -35,3 +35,9 @@ export function classifyConfidenceMomentum(points: ConfidenceMomentumPoint[], th
   if (recentDelta >= resolvedThresholds.deterioratingDropThreshold && latest.isTradeEligible === true) return { status: "recovering" as const, latest, recentDelta, twoCandleDelta, reason: `Confidence phục hồi ${recentDelta.toFixed(1)} điểm so với nến trước.` };
   return { status: "stable" as const, latest, recentDelta, twoCandleDelta, reason: "Confidence chưa có biến động đủ lớn để tạo early-warning." };
 }
+
+export function detectCriticalMomentumTransition(history: ConfidenceMomentumPoint[], current: ConfidenceMomentumPoint, thresholds?: Partial<MomentumThresholds>) {
+  const previous = classifyConfidenceMomentum(history, thresholds);
+  const next = classifyConfidenceMomentum([...history, current], thresholds);
+  return { transitioned: next.status === "critical" && previous.status !== "critical", previous, next };
+}

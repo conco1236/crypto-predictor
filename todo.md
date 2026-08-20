@@ -491,3 +491,10 @@
 - [x] Áp dụng ngưỡng cấu hình vào early-warning queue và Confidence Timeline
 - [x] Tạo bảng điều khiển chỉnh ngưỡng, preview tác động và lưu có ownership
 - [x] Kiểm thử schema, ownership, regression, responsive và phát hành checkpoint
+
+## User request: Telegram alert for Critical momentum transition
+
+- [x] Rà soát candle-close snapshot, Telegram delivery và key idempotency cho Critical transition
+- [x] Thêm phát hiện chuyển trạng thái Critical và alert Telegram không gửi trùng
+- [x] Hiển thị/audit alert Critical trong Operations hoặc Command Center
+- [x] Kiểm thử transition, idempotency, Telegram delivery, responsive và phát hành checkpoint

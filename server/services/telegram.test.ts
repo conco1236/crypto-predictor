@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildSignalInlineKeyboard, formatSignalAlert, sendTelegramMessage } from "./telegram";
+import { buildSignalInlineKeyboard, formatMomentumCriticalAlert, formatSignalAlert, sendTelegramMessage } from "./telegram";
 import type { MarketAnalysis } from "../market/binance";
 
 const sample = {
@@ -43,6 +43,14 @@ describe("telegram alerts", () => {
     const message = formatSignalAlert({ ...sample, signalQuality: { confidence: 45, penalty: 24, isTradeEligible: false, reasons: ["Thanh khoản chưa đạt"] } });
     expect(message).toContain("Quality alert");
     expect(message).toContain("24 điểm");
+  });
+
+  it("formats a Critical momentum alert as observation only, without trade controls", () => {
+    const message = formatMomentumCriticalAlert({ exchange: "OKX", symbol: "ETHUSDT", interval: "4h", candleClosedAt: 1_700_000_000_000, previousConfidence: 76, confidence: 54, delta: -22, reason: "Confidence giảm đột ngột", penalty: 24, isTradeEligible: false });
+    expect(message).toContain("Momentum Critical");
+    expect(message).toContain("76.0/100 → 54.0/100");
+    expect(message).toContain("không tự mở/đóng lệnh");
+    expect(message).not.toContain("Mở paper trade");
   });
 
   it("surfaces Telegram API description when delivery fails", async () => {

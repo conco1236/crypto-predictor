@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/mysql2";
 import { and, desc, eq, gt, like } from "drizzle-orm";
-import { aiAnalyses, aiReanalysisRequests, heartbeatRuns, InsertUser, momentumSettings, newsAiSettings, newsItems, paperBotAuditLogs, paperTrades, signalOutcomes, signalProcessingState, signalSnapshots, telegramAlertRules, telegramDeliveryLogs, telegramQualityThresholdHistory, telegramQualityThresholdOverrides, telegramSettings, users } from "../drizzle/schema";
+import { aiAnalyses, aiReanalysisRequests, heartbeatRuns, InsertUser, momentumCriticalAlerts, momentumSettings, newsAiSettings, newsItems, paperBotAuditLogs, paperTrades, signalOutcomes, signalProcessingState, signalSnapshots, telegramAlertRules, telegramDeliveryLogs, telegramQualityThresholdHistory, telegramQualityThresholdOverrides, telegramSettings, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { classifyConfidenceMomentum, DEFAULT_MOMENTUM_THRESHOLDS, normalizeMomentumThresholds } from "../shared/confidenceMomentum";
 
@@ -192,6 +192,34 @@ export async function updateTelegramDeliveryLog(id: number, data: { status: "pen
   const db = await getDb();
   if (!db) return;
   await db.update(telegramDeliveryLogs).set(data).where(eq(telegramDeliveryLogs.id, id));
+}
+
+export async function getMomentumCriticalAlert(userId: number, input: { exchange: string; symbol: string; interval: string; candleOpenTime: number }) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(momentumCriticalAlerts).where(and(eq(momentumCriticalAlerts.userId, userId), eq(momentumCriticalAlerts.exchange, input.exchange), eq(momentumCriticalAlerts.symbol, input.symbol), eq(momentumCriticalAlerts.interval, input.interval), eq(momentumCriticalAlerts.candleOpenTime, input.candleOpenTime))).limit(1);
+  return result[0];
+}
+
+export async function createMomentumCriticalAlert(input: { userId: number; taskUid?: string; exchange: string; symbol: string; interval: string; candleOpenTime: number; candleClosedAt: number; previousConfidence?: number | null; confidence: number; delta?: number | null; reason: string; message: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database chưa sẵn sàng");
+  const existing = await getMomentumCriticalAlert(input.userId, input);
+  if (existing) return existing;
+  await db.insert(momentumCriticalAlerts).values({ ...input, taskUid: input.taskUid ?? null, previousConfidence: input.previousConfidence ?? null, delta: input.delta ?? null, status: "pending", attempts: 0 });
+  return getMomentumCriticalAlert(input.userId, input);
+}
+
+export async function updateMomentumCriticalAlert(id: number, data: { status: "pending" | "sent" | "failed"; attempts?: number; telegramMessageId?: string | null; lastError?: string | null; sentAt?: Date | null }) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(momentumCriticalAlerts).set(data).where(eq(momentumCriticalAlerts.id, id));
+}
+
+export async function getMomentumCriticalAlertHistory(userId: number, limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(momentumCriticalAlerts).where(eq(momentumCriticalAlerts.userId, userId)).orderBy(desc(momentumCriticalAlerts.createdAt)).limit(clampHistoryLimit(limit, 20, 100));
 }
 
 export async function getTelegramDeliveryHistory(userId: number, limit = 30, filters?: { status?: "pending" | "sent" | "failed"; symbol?: string; exchange?: string; interval?: string }) {

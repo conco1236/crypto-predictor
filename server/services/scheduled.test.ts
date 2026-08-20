@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { paperPnlReportHandler, refreshSignalsHandler } from "./scheduled";
 
-const { authenticateRequest, getSettings, getPaperReportSettings, getClosedTrades, updatePaperReport, createAudit, getRules, getQualityOverrides, getLast, getProcessed, getDelivery, getSignalOutcomes, createDelivery, updateDelivery, markProcessed, saveSnapshot, saveHeartbeat, analyze, send } = vi.hoisted(() => ({
-  authenticateRequest: vi.fn(), getSettings: vi.fn(), getPaperReportSettings: vi.fn(), getClosedTrades: vi.fn(), updatePaperReport: vi.fn(), createAudit: vi.fn(), getRules: vi.fn(), getQualityOverrides: vi.fn(), getLast: vi.fn(), getProcessed: vi.fn(), getDelivery: vi.fn(), getSignalOutcomes: vi.fn(), createDelivery: vi.fn(), updateDelivery: vi.fn(), markProcessed: vi.fn(), saveSnapshot: vi.fn(), saveHeartbeat: vi.fn(), analyze: vi.fn(), send: vi.fn(),
+const { authenticateRequest, getSettings, getPaperReportSettings, getClosedTrades, updatePaperReport, createAudit, getRules, getQualityOverrides, getLast, getProcessed, getDelivery, getSignalOutcomes, getMomentumSettings, getConfidenceHistory, getCriticalAlert, createCriticalAlert, updateCriticalAlert, createDelivery, updateDelivery, markProcessed, saveSnapshot, saveHeartbeat, analyze, send } = vi.hoisted(() => ({
+  authenticateRequest: vi.fn(), getSettings: vi.fn(), getPaperReportSettings: vi.fn(), getClosedTrades: vi.fn(), updatePaperReport: vi.fn(), createAudit: vi.fn(), getRules: vi.fn(), getQualityOverrides: vi.fn(), getLast: vi.fn(), getProcessed: vi.fn(), getDelivery: vi.fn(), getSignalOutcomes: vi.fn(), getMomentumSettings: vi.fn(), getConfidenceHistory: vi.fn(), getCriticalAlert: vi.fn(), createCriticalAlert: vi.fn(), updateCriticalAlert: vi.fn(), createDelivery: vi.fn(), updateDelivery: vi.fn(), markProcessed: vi.fn(), saveSnapshot: vi.fn(), saveHeartbeat: vi.fn(), analyze: vi.fn(), send: vi.fn(),
 }));
 
 vi.mock("../_core/sdk", () => ({ sdk: { authenticateRequest } }));
-vi.mock("../db", () => ({ getTelegramSettingsByTaskUid: getSettings, getTelegramSettingsByPaperReportTaskUid: getPaperReportSettings, getClosedPaperTradesForDate: getClosedTrades, updatePaperReportSettings: updatePaperReport, createPaperBotAudit: createAudit, getTelegramAlertRules: getRules, getQualityThresholdOverrides: getQualityOverrides, getLastSignal: getLast, getProcessedCandle: getProcessed, getTelegramDeliveryLog: getDelivery, getSignalOutcomes, getNewsAiSettings: vi.fn(async () => undefined), saveAiAnalysis: vi.fn(), saveNewsItem: vi.fn(), createTelegramDeliveryLog: createDelivery, updateTelegramDeliveryLog: updateDelivery, markProcessedCandle: markProcessed, saveSignalSnapshot: saveSnapshot, saveHeartbeatRun: saveHeartbeat }));
+vi.mock("../db", () => ({ getTelegramSettingsByTaskUid: getSettings, getTelegramSettingsByPaperReportTaskUid: getPaperReportSettings, getClosedPaperTradesForDate: getClosedTrades, updatePaperReportSettings: updatePaperReport, createPaperBotAudit: createAudit, getTelegramAlertRules: getRules, getQualityThresholdOverrides: getQualityOverrides, getLastSignal: getLast, getProcessedCandle: getProcessed, getTelegramDeliveryLog: getDelivery, getSignalOutcomes, getMomentumSettings, getConfidenceHistory, getMomentumCriticalAlert: getCriticalAlert, createMomentumCriticalAlert: createCriticalAlert, updateMomentumCriticalAlert: updateCriticalAlert, getNewsAiSettings: vi.fn(async () => undefined), saveAiAnalysis: vi.fn(), saveNewsItem: vi.fn(), createTelegramDeliveryLog: createDelivery, updateTelegramDeliveryLog: updateDelivery, markProcessedCandle: markProcessed, saveSignalSnapshot: saveSnapshot, saveHeartbeatRun: saveHeartbeat }));
 vi.mock("../market/binance", () => ({ analyzeAllMarkets: analyze }));
 vi.mock("../market/news", () => ({ fetchRelevantNews: vi.fn(async () => []) }));
-vi.mock("./telegram", () => ({ formatSignalAlert: vi.fn(() => "alert"), generateSignalAiAnalysis: vi.fn(async () => "AI test analysis"), buildSignalInlineKeyboard: vi.fn(() => ({ inline_keyboard: [] })), sendTelegramMessage: send }));
+vi.mock("./telegram", () => ({ formatSignalAlert: vi.fn(() => "alert"), formatMomentumCriticalAlert: vi.fn(() => "critical alert"), generateSignalAiAnalysis: vi.fn(async () => "AI test analysis"), buildSignalInlineKeyboard: vi.fn(() => ({ inline_keyboard: [] })), sendTelegramMessage: send }));
 
 function response() {
   return { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() } as any;
@@ -52,7 +52,7 @@ describe("paperPnlReportHandler", () => {
 });
 
 describe("refreshSignalsHandler", () => {
-  beforeEach(() => { vi.clearAllMocks(); getRules.mockResolvedValue([]); getQualityOverrides.mockResolvedValue([]); getSignalOutcomes.mockResolvedValue([]); analyze.mockResolvedValue([market]); getDelivery.mockResolvedValue(undefined); createDelivery.mockResolvedValue({ id: 1, status: "pending", attempts: 0 }); saveSnapshot.mockResolvedValue(undefined); updateDelivery.mockResolvedValue(undefined); saveHeartbeat.mockResolvedValue(undefined); send.mockResolvedValue({ ok: true, result: { message_id: 1 } }); });
+  beforeEach(() => { vi.clearAllMocks(); getRules.mockResolvedValue([]); getQualityOverrides.mockResolvedValue([]); getSignalOutcomes.mockResolvedValue([]); getMomentumSettings.mockResolvedValue({ criticalDropThreshold: 15, deterioratingDropThreshold: 8 }); getConfidenceHistory.mockResolvedValue([]); getCriticalAlert.mockResolvedValue(undefined); createCriticalAlert.mockResolvedValue({ id: 2, status: "pending", attempts: 0, message: "critical alert" }); analyze.mockResolvedValue([market]); getDelivery.mockResolvedValue(undefined); createDelivery.mockResolvedValue({ id: 1, status: "pending", attempts: 0 }); saveSnapshot.mockResolvedValue(undefined); updateDelivery.mockResolvedValue(undefined); updateCriticalAlert.mockResolvedValue(undefined); saveHeartbeat.mockResolvedValue(undefined); send.mockResolvedValue({ ok: true, result: { message_id: 1 } }); });
 
   it("rejects non-cron callers", async () => {
     authenticateRequest.mockResolvedValue({ isCron: false });
@@ -166,5 +166,31 @@ describe("refreshSignalsHandler", () => {
     expect(markProcessed).toHaveBeenCalledOnce();
     expect(updateDelivery).toHaveBeenLastCalledWith(1, expect.objectContaining({ status: "sent" }));
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ alerts: 1 }));
+  });
+
+  it("sends a separate Telegram alert when momentum transitions into Critical", async () => {
+    authenticateRequest.mockResolvedValue({ isCron: true, taskUid: "task-1" });
+    getSettings.mockResolvedValue({ userId: 7, enabled: 1, alertThreshold: 50, botToken: "token", chatId: "chat" });
+    getProcessed.mockResolvedValue(undefined);
+    getConfidenceHistory.mockResolvedValue([{ candleClosedAt: 1000, confidence: 78, penalty: 0, isTradeEligible: true, label: "Bullish" }, { candleClosedAt: 3000, confidence: 74, penalty: 1, isTradeEligible: true, label: "Bullish" }]);
+    analyze.mockResolvedValue([{ ...market, indicators: { label: "Neutral", score: 10, confidence: 55 }, signalQuality: { penalty: 24, isTradeEligible: false, reasons: ["Thanh khoản chưa đạt"] } }]);
+    const res = response();
+    await refreshSignalsHandler({} as any, res);
+    expect(createCriticalAlert).toHaveBeenCalledOnce();
+    expect(updateCriticalAlert).toHaveBeenLastCalledWith(2, expect.objectContaining({ status: "sent" }));
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ criticalAlerts: 1 }));
+  });
+
+  it("retries a failed Critical alert after the candle is processed without saving another snapshot", async () => {
+    authenticateRequest.mockResolvedValue({ isCron: true, taskUid: "task-1" });
+    getSettings.mockResolvedValue({ userId: 7, enabled: 1, alertThreshold: 50, botToken: "token", chatId: "chat" });
+    getProcessed.mockResolvedValue({ candleOpenTime: 1000 });
+    getCriticalAlert.mockResolvedValue({ id: 2, status: "failed", attempts: 1, message: "critical alert" });
+    const res = response();
+    await refreshSignalsHandler({} as any, res);
+    expect(saveSnapshot).not.toHaveBeenCalled();
+    expect(send).toHaveBeenCalledOnce();
+    expect(updateCriticalAlert).toHaveBeenLastCalledWith(2, expect.objectContaining({ status: "sent" }));
   });
 });

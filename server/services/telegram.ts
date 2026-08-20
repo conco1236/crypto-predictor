@@ -93,3 +93,17 @@ export function formatSignalAlert(analysis: MarketAnalysis, aiAnalysis?: string,
     `<i>Chỉ mang tính tham khảo, không phải khuyến nghị đầu tư.</i>`,
   ].join("\n");
 }
+
+export function formatMomentumCriticalAlert(input: { exchange: string; symbol: string; interval: string; candleClosedAt: number; previousConfidence: number | null; confidence: number; delta: number | null; reason: string; penalty: number | null; isTradeEligible: boolean | null }) {
+  const previous = input.previousConfidence == null ? "không đủ lịch sử" : `${input.previousConfidence.toFixed(1)}/100`;
+  const delta = input.delta == null ? "—" : `${input.delta > 0 ? "+" : ""}${input.delta.toFixed(1)} điểm`;
+  return [
+    `<b>⚠️ Momentum Critical — ${escapeTelegramHtml(input.symbol.replace("USDT", ""))}</b>`,
+    `Sàn: <b>${escapeTelegramHtml(input.exchange)}</b> | Khung: <b>${escapeTelegramHtml(input.interval)}</b>`,
+    `Confidence: <b>${previous} → ${input.confidence.toFixed(1)}/100</b> (${delta})`,
+    `Quality: <b>${input.isTradeEligible === false ? "Quality-gated" : "Theo dõi"}</b>${input.penalty == null ? "" : ` · penalty ${input.penalty.toFixed(1)} điểm`}`,
+    `Lý do: ${escapeTelegramHtml(input.reason)}`,
+    `Nến đóng: <b>${new Date(input.candleClosedAt).toLocaleString("vi-VN")}</b>`,
+    `<i>Cảnh báo quan sát; không tự mở/đóng lệnh và không thay đổi guardrail Trade/No Trade.</i>`,
+  ].join("\n");
+}

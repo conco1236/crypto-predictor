@@ -69,6 +69,29 @@ export const momentumSettings = mysqlTable("momentum_settings", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => ({ userUnique: uniqueIndex("momentum_settings_user_unique").on(table.userId) }));
 
+export const momentumCriticalAlerts = mysqlTable("momentum_critical_alerts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  taskUid: varchar("taskUid", { length: 65 }),
+  exchange: varchar("exchange", { length: 20 }).notNull(),
+  symbol: varchar("symbol", { length: 20 }).notNull(),
+  interval: varchar("interval", { length: 10 }).notNull(),
+  candleOpenTime: double("candleOpenTime").notNull(),
+  candleClosedAt: double("candleClosedAt").notNull(),
+  previousConfidence: double("previousConfidence"),
+  confidence: double("confidence").notNull(),
+  delta: double("delta"),
+  reason: text("reason").notNull(),
+  message: text("message"),
+  status: mysqlEnum("status", ["pending", "sent", "failed"]).default("pending").notNull(),
+  attempts: int("attempts").default(0).notNull(),
+  telegramMessageId: varchar("telegramMessageId", { length: 64 }),
+  lastError: text("lastError"),
+  sentAt: timestamp("sentAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({ uniqueCandleAlert: uniqueIndex("momentum_critical_alert_candle_unique").on(table.userId, table.exchange, table.symbol, table.interval, table.candleOpenTime), lookupIndex: index("momentum_critical_alert_lookup_idx").on(table.userId, table.status, table.createdAt) }));
+
 export const signalProcessingState = mysqlTable("signal_processing_state", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -229,6 +252,7 @@ export type TelegramAlertRule = typeof telegramAlertRules.$inferSelect;
 export type TelegramQualityThresholdOverride = typeof telegramQualityThresholdOverrides.$inferSelect;
 export type TelegramQualityThresholdHistory = typeof telegramQualityThresholdHistory.$inferSelect;
 export type MomentumSetting = typeof momentumSettings.$inferSelect;
+export type MomentumCriticalAlert = typeof momentumCriticalAlerts.$inferSelect;
 export type SignalSnapshot = typeof signalSnapshots.$inferSelect;
 export type TelegramDeliveryLog = typeof telegramDeliveryLogs.$inferSelect;
 export type HeartbeatRun = typeof heartbeatRuns.$inferSelect;
