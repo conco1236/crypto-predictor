@@ -39,6 +39,12 @@ describe("telegram alerts", () => {
     expect(message).toContain("Xu hướng tăng được xác nhận");
   });
 
+  it("marks a sharp quality penalty as a Telegram warning", () => {
+    const message = formatSignalAlert({ ...sample, signalQuality: { confidence: 45, penalty: 24, isTradeEligible: false, reasons: ["Thanh khoản chưa đạt"] } });
+    expect(message).toContain("Quality alert");
+    expect(message).toContain("24 điểm");
+  });
+
   it("surfaces Telegram API description when delivery fails", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 400, json: async () => ({ ok: false, description: "chat not found" }) }));
     await expect(sendTelegramMessage("token", "chat", "hello")).rejects.toThrow("chat not found");

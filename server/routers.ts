@@ -8,6 +8,7 @@ import { parse as parseCookie } from "cookie";
 import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { analyzeAllMarkets, fetchExchangeCandles, type ExchangeName, type IntervalName, type SymbolName } from "./market/binance";
 import { calibrateConfidence, evaluateSignalOutcome, summarizeOutcomes } from "./market/outcomes";
+import { summarizeQualityBacktest } from "./market/qualityMetrics";
 import { fetchRelevantNews } from "./market/news";
 import { createReanalysisRequest, createTelegramDeliveryLog, deleteTelegramAlertRule, getHeartbeatHistory, getHeartbeatHistoryPage, getLastSignal, getProcessedCandle, getRecentReanalysis, getRiskHistories, getRiskHistory, getSignalHistory, getSignalSnapshotById, getTelegramAlertRules, getTelegramDeliveryHistory, getTelegramDeliveryHistoryPage, getTelegramDeliveryLog, getTelegramDeliveryLogById, getTelegramSettings, getSignalOutcomes, getNewsAiSettings, getNewsHistory, getNewsHistoryPage, getAiHistory, getAiHistoryPage, markProcessedCandle, saveAiAnalysis, saveNewsAiSettings, saveNewsItem, saveSignalSnapshot, saveTelegramSettings, updateReanalysisRequest, updateTelegramDeliveryLog, upsertSignalOutcome, upsertTelegramAlertRule, createPaperTrade, getPaperTrades, updatePaperTrade, createPaperBotAudit, getPaperBotAudit, updatePaperReportSettings } from "./db";
 import { buildSignalInlineKeyboard, formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./services/telegram";
@@ -139,7 +140,9 @@ export const appRouter = router({
         return Promise.all(rows.map(async row => {
           const outcome = evaluateSignalOutcome({ direction: row.label, entry: row.entry, takeProfit: row.takeProfit1, stopLoss: row.stopLoss, signalCandleOpenTime: (() => { try { return Number((JSON.parse(row.indicators) as { candleOpenTime?: number }).candleOpenTime ?? row.createdAt.getTime()); } catch { return row.createdAt.getTime(); } })() }, candles);
           await upsertSignalOutcome({ userId: ctx.user.id, snapshotId: row.id, exchange: row.exchange, symbol: row.symbol, interval: row.interval, outcome: outcome.result, signalCandleOpenTime: outcome.signalCandleOpenTime, exitCandleOpenTime: outcome.exitCandleOpenTime, exitPrice: outcome.exitPrice, returnPercent: outcome.returnPercent, candlesObserved: outcome.candlesObserved, reason: outcome.reason });
-          return { ...outcome, id: row.id, exchange: row.exchange, symbol: row.symbol, interval: row.interval, createdAt: row.createdAt };
+          let quality: { penalty?: number; isTradeEligible?: boolean } | undefined;
+          try { quality = (JSON.parse(row.indicators) as { signalQuality?: { penalty?: number; isTradeEligible?: boolean } }).signalQuality; } catch { quality = undefined; }
+          return { ...outcome, id: row.id, exchange: row.exchange, symbol: row.symbol, interval: row.interval, createdAt: row.createdAt, quality };
         }));
       }));
       const outcomes = outcomeGroups.flat();
@@ -152,7 +155,8 @@ export const appRouter = router({
         breakdown[key] = summarizeOutcomes(bucket);
       }
       const persisted = await getSignalOutcomes(ctx.user.id, input?.limit ?? 20);
-      return { summary: summarizeOutcomes(outcomes), breakdown, calibration: calibrateConfidence(baseConfidence, outcomes), outcomes, persistedCount: persisted.length, evaluatedAt: Date.now(), note: "Backtest dùng nến thật theo cửa sổ walk-forward. Khi TP/SL chưa chạm, P&L cuối horizon được hiển thị riêng và không được tính vào hit rate." };
+      const quality = summarizeQualityBacktest(outcomes.map(row => ({ exchange: row.exchange, symbol: row.symbol, interval: row.interval, outcome: row, quality: row.quality })));
+      return { summary: summarizeOutcomes(outcomes), breakdown, quality, calibration: calibrateConfidence(baseConfidence, outcomes), outcomes, persistedCount: persisted.length, evaluatedAt: Date.now(), note: "Backtest dùng nến thật theo cửa sổ walk-forward. Khi TP/SL chưa chạm, P&L cuối horizon được hiển thị riêng và không được tính vào hit rate." };
     }),
   }),
   news: router({

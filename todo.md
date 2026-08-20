@@ -431,3 +431,10 @@
 - [x] Thêm guardrail confidence theo độ đồng thuận dữ liệu và freshness đa sàn
 - [x] Làm rõ lý do giảm confidence hoặc No Trade qua confidence reasons, data warnings và signal reason
 - [x] Kiểm thử logic accuracy, regression và phát hành checkpoint
+
+## User request: quality gate backtest, confidence alerts and penalty chart
+
+- [x] Backtest và phân nhóm kết quả quality gate theo BTC/ETH và khung thời gian
+- [x] Gửi cảnh báo Telegram khi confidence bị giảm mạnh do quality gate
+- [x] Hiển thị biểu đồ phân bố quality penalty theo Binance/Bybit/OKX
+- [x] Kiểm thử contracts, data transformations, responsive UI và phát hành checkpoint

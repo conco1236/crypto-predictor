@@ -101,9 +101,10 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
       let currentDelivery = delivery;
       if (!currentDelivery) {
           const strongSignal = (a.signalStatus ?? "Trade") === "Trade" && (a.liquidity?.isValid ?? true) && Math.abs(a.indicators.score) >= alertSettings.alertThreshold;
-          const modeAllowsAlert = (alertSettings.sendMode ?? "all_candles") === "all_candles" || strongSignal;
+          const qualityAlert = (a.signalQuality?.penalty ?? 0) >= 20;
+          const modeAllowsAlert = (alertSettings.sendMode ?? "all_candles") === "all_candles" || strongSignal || qualityAlert;
           const shouldAlert = Boolean(alertSettings.enabled && alertSettings.botToken && alertSettings.chatId && modeAllowsAlert);
-        await saveSignalSnapshot({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, label: a.indicators.label, score: a.indicators.score, price: a.price, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, risk: a.risk, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
+        await saveSignalSnapshot({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, label: a.indicators.label, score: a.indicators.score, price: a.price, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, risk: a.risk, signalQuality: a.signalQuality, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
         saved++;
         if (shouldAlert) {
             const calibrated = calibrateConfidence(a.indicators.confidence, persistedOutcomes.map(row => ({ direction: a.indicators.label, signalCandleOpenTime: row.signalCandleOpenTime, result: row.outcome, exitCandleOpenTime: row.exitCandleOpenTime ?? undefined, exitPrice: row.exitPrice ?? undefined, returnPercent: row.returnPercent, candlesObserved: row.candlesObserved, reason: row.reason ?? "" })));
