@@ -46,6 +46,8 @@ export class LiveSocketManager {
 
   stop() {
     this.stopped = true;
+    if (this.emitTimer) clearTimeout(this.emitTimer);
+    this.emitTimer = undefined;
     this.reconnectTimers.forEach(timer => clearTimeout(timer));
     this.heartbeatTimers.forEach(timer => clearTimeout(timer));
     this.watchdogTimers.forEach(timer => clearTimeout(timer));

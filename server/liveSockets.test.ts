@@ -81,4 +81,17 @@ describe("LiveSocketManager", () => {
     expect(statuses.some(status => status.Binance === "reconnecting" || status.Binance === "error")).toBe(true);
     manager.stop();
   });
+
+  it("cancels the scheduled emitter when stopped", () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("WebSocket", FakeSocket);
+    const manager = new LiveSocketManager();
+    const listener = vi.fn();
+    manager.subscribe(listener);
+    manager.start();
+    const callsBeforeStop = listener.mock.calls.length;
+    manager.stop();
+    vi.advanceTimersByTime(10_000);
+    expect(listener.mock.calls.length).toBe(callsBeforeStop);
+  });
 });

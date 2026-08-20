@@ -397,3 +397,11 @@
 - [x] Cho phép nạp mẫu vào editor mà không ghi đè scenario đã lưu
 - [x] Kiểm thử template values, onboarding UI và regression
 - [x] Rà soát đề xuất nâng cấp tiếp theo cho sản phẩm
+
+## User request: system audit, bug fixes and new feature review
+
+- [x] Kiểm tra logs runtime, TypeScript, full test suite, network và trạng thái giao diện
+- [x] Phân loại lỗi có thể tái lập, sửa cleanup timer WebSocket khi unmount và thêm regression test
+- [x] Rà soát các tính năng mới theo mức độ tác động, độ an toàn và khả năng triển khai
+- [x] Kiểm thử responsive, checkpoint và báo cáo kết quả audit
+- [x] Đánh giá FEED STALE: không tái lập lỗi nghiệp vụ; sandbox không có session/WebSocket bên thứ ba, market REST/tRPC vẫn là nguồn snapshot kỹ thuật độc lập
