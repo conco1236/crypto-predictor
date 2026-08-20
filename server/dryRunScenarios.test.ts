@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readDryRunScenarios, upsertDryRunScenario, writeDryRunScenarios, type DryRunScenario } from "../client/src/lib/dryRunScenarios";
+import { readDryRunScenarios, readQuickLaunchScenarioId, upsertDryRunScenario, writeDryRunScenarios, writeQuickLaunchScenarioId, type DryRunScenario } from "../client/src/lib/dryRunScenarios";
 
 const scenario: DryRunScenario = { id: "s1", name: "BTC conservative", exchange: "Binance", symbol: "BTCUSDT", side: "Long", entry: "100", takeProfit: "105", stopLoss: "98", currentPrice: "100", quantity: "0.001", maxRiskPercent: "1", updatedAt: 1 };
 
@@ -17,5 +17,13 @@ describe("dry-run scenarios", () => {
     let saved = "";
     writeDryRunScenarios(values, { setItem: (_key, value) => { saved = value; } });
     expect(JSON.parse(saved)).toHaveLength(50);
+  });
+
+  it("stores only a scenario ID for quick launch", () => {
+    let saved = "";
+    const storage = { getItem: () => saved, setItem: (_key: string, value: string) => { saved = value; } };
+    writeQuickLaunchScenarioId("scenario-42", storage);
+    expect(readQuickLaunchScenarioId(storage)).toBe("scenario-42");
+    expect(saved).toBe("scenario-42");
   });
 });

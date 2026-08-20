@@ -18,6 +18,7 @@ export type DryRunScenario = ScenarioInput & {
 };
 
 const STORAGE_KEY = "crypto-trend-signal:dry-run-scenarios";
+const QUICK_LAUNCH_KEY = "crypto-trend-signal:dry-run-scenario-quick-launch";
 
 export function readDryRunScenarios(storage: Pick<Storage, "getItem"> | undefined = typeof window === "undefined" ? undefined : window.localStorage): DryRunScenario[] {
   if (!storage) return [];
@@ -30,4 +31,12 @@ export function writeDryRunScenarios(scenarios: DryRunScenario[], storage: Pick<
 
 export function upsertDryRunScenario(scenario: DryRunScenario, scenarios: DryRunScenario[]) {
   return [scenario, ...scenarios.filter(item => item.id !== scenario.id)].slice(0, 50);
+}
+
+export function readQuickLaunchScenarioId(storage: Pick<Storage, "getItem"> | undefined = typeof window === "undefined" ? undefined : window.localStorage) {
+  return storage?.getItem(QUICK_LAUNCH_KEY) ?? "";
+}
+
+export function writeQuickLaunchScenarioId(id: string, storage: Pick<Storage, "setItem"> | undefined = typeof window === "undefined" ? undefined : window.localStorage) {
+  storage?.setItem(QUICK_LAUNCH_KEY, id);
 }

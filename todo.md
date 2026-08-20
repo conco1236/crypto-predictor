@@ -418,3 +418,9 @@
 - [x] Đọc skill đính kèm và map blueprint vào cấu trúc webapp hiện tại
 - [x] Cải thiện kiến trúc thông tin, điều hướng và trải nghiệm website theo blueprint
 - [x] Kiểm thử UI/responsive, regression và phát hành checkpoint
+
+## User request: quick access panel for recent dry-run scenarios
+
+- [x] Hiển thị các dry-run scenario gần nhất từ local persistence trên Platform Overview
+- [x] Thêm nút nạp an toàn scenario vào Execution Lab mà không chứa secrets
+- [x] Kiểm thử persistence, responsive UI và regression trước checkpoint
