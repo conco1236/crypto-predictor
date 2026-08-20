@@ -472,3 +472,8 @@
 - [x] Xây logic phát hiện confidence giảm đột ngột giữa hai nến theo ngưỡng minh bạch
 - [x] Thêm marker, annotation và bảng decision context cho confidence drop trên timeline
 - [x] Kiểm thử regression, responsive và phát hành checkpoint
+
+## User request: GitHub sync
+
+- [ ] Kiểm tra trạng thái repository và đồng bộ Confidence Timeline lên nhánh main
+- [ ] Xác minh commit GitHub sau khi push
