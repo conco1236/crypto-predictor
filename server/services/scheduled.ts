@@ -9,6 +9,7 @@ import {
   getTelegramSettingsByTaskUid,
   getTelegramAlertRules,
   getNewsAiSettings,
+  getQualityThresholdOverrides,
   markProcessedCandle,
   saveAiAnalysis,
   saveHeartbeatRun,
@@ -25,6 +26,7 @@ import { fetchRelevantNews } from "../market/news";
 import { calibrateConfidence } from "../market/outcomes";
 import { buildSignalInlineKeyboard, formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./telegram";
 import { resolveAlertRule } from "./alertRules";
+import { resolveQualityThreshold } from "./qualityThresholds";
 
 function utcDateKey(offsetDays = 0) {
   const date = new Date(Date.now() + offsetDays * 86_400_000);
@@ -85,6 +87,7 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
     if (!settings) return res.json({ ok: true, skipped: "orphan" });
     userId = settings.userId;
     const rules = await getTelegramAlertRules(userId);
+    const qualityOverrides = await getQualityThresholdOverrides(userId);
     const newsSettings = await getNewsAiSettings(userId);
     const persistedOutcomes = await getSignalOutcomes(userId, 200);
     const analyses = await analyzeAllMarkets();
@@ -101,7 +104,7 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
       let currentDelivery = delivery;
       if (!currentDelivery) {
           const strongSignal = (a.signalStatus ?? "Trade") === "Trade" && (a.liquidity?.isValid ?? true) && Math.abs(a.indicators.score) >= alertSettings.alertThreshold;
-          const qualityAlert = (a.signalQuality?.penalty ?? 0) >= (alertSettings.qualityAlertThreshold ?? 20);
+          const qualityAlert = (a.signalQuality?.penalty ?? 0) >= resolveQualityThreshold(a.exchange, alertSettings.qualityAlertThreshold ?? 20, qualityOverrides);
           const modeAllowsAlert = (alertSettings.sendMode ?? "all_candles") === "all_candles" || strongSignal || qualityAlert;
           const shouldAlert = Boolean(alertSettings.enabled && alertSettings.botToken && alertSettings.chatId && modeAllowsAlert);
         await saveSignalSnapshot({ userId, exchange: a.exchange, symbol: a.symbol, interval: a.interval, label: a.indicators.label, score: a.indicators.score, price: a.price, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, risk: a.risk, signalQuality: a.signalQuality, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });

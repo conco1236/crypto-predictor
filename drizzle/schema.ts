@@ -41,6 +41,25 @@ export const telegramAlertRules = mysqlTable("telegram_alert_rules", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => ({ ruleUnique: uniqueIndex("telegram_alert_rules_scope_unique").on(table.userId, table.symbol, table.exchange, table.interval), userIndex: index("telegram_alert_rules_user_idx").on(table.userId, table.updatedAt) }));
 
+export const telegramQualityThresholdOverrides = mysqlTable("telegram_quality_threshold_overrides", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  exchange: varchar("exchange", { length: 20 }).notNull(),
+  threshold: int("threshold").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({ userExchangeUnique: uniqueIndex("telegram_quality_threshold_user_exchange_unique").on(table.userId, table.exchange), userIndex: index("telegram_quality_threshold_user_idx").on(table.userId, table.updatedAt) }));
+
+export const telegramQualityThresholdHistory = mysqlTable("telegram_quality_threshold_history", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  exchange: varchar("exchange", { length: 20 }),
+  previousThreshold: int("previousThreshold"),
+  nextThreshold: int("nextThreshold").notNull(),
+  source: varchar("source", { length: 20 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => ({ userHistoryIndex: index("telegram_quality_threshold_history_user_idx").on(table.userId, table.createdAt) }));
+
 export const signalProcessingState = mysqlTable("signal_processing_state", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -198,6 +217,8 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type TelegramSetting = typeof telegramSettings.$inferSelect;
 export type TelegramAlertRule = typeof telegramAlertRules.$inferSelect;
+export type TelegramQualityThresholdOverride = typeof telegramQualityThresholdOverrides.$inferSelect;
+export type TelegramQualityThresholdHistory = typeof telegramQualityThresholdHistory.$inferSelect;
 export type SignalSnapshot = typeof signalSnapshots.$inferSelect;
 export type TelegramDeliveryLog = typeof telegramDeliveryLogs.$inferSelect;
 export type HeartbeatRun = typeof heartbeatRuns.$inferSelect;

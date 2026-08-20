@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { paperPnlReportHandler, refreshSignalsHandler } from "./scheduled";
 
-const { authenticateRequest, getSettings, getPaperReportSettings, getClosedTrades, updatePaperReport, createAudit, getRules, getLast, getProcessed, getDelivery, getSignalOutcomes, createDelivery, updateDelivery, markProcessed, saveSnapshot, saveHeartbeat, analyze, send } = vi.hoisted(() => ({
-  authenticateRequest: vi.fn(), getSettings: vi.fn(), getPaperReportSettings: vi.fn(), getClosedTrades: vi.fn(), updatePaperReport: vi.fn(), createAudit: vi.fn(), getRules: vi.fn(), getLast: vi.fn(), getProcessed: vi.fn(), getDelivery: vi.fn(), getSignalOutcomes: vi.fn(), createDelivery: vi.fn(), updateDelivery: vi.fn(), markProcessed: vi.fn(), saveSnapshot: vi.fn(), saveHeartbeat: vi.fn(), analyze: vi.fn(), send: vi.fn(),
+const { authenticateRequest, getSettings, getPaperReportSettings, getClosedTrades, updatePaperReport, createAudit, getRules, getQualityOverrides, getLast, getProcessed, getDelivery, getSignalOutcomes, createDelivery, updateDelivery, markProcessed, saveSnapshot, saveHeartbeat, analyze, send } = vi.hoisted(() => ({
+  authenticateRequest: vi.fn(), getSettings: vi.fn(), getPaperReportSettings: vi.fn(), getClosedTrades: vi.fn(), updatePaperReport: vi.fn(), createAudit: vi.fn(), getRules: vi.fn(), getQualityOverrides: vi.fn(), getLast: vi.fn(), getProcessed: vi.fn(), getDelivery: vi.fn(), getSignalOutcomes: vi.fn(), createDelivery: vi.fn(), updateDelivery: vi.fn(), markProcessed: vi.fn(), saveSnapshot: vi.fn(), saveHeartbeat: vi.fn(), analyze: vi.fn(), send: vi.fn(),
 }));
 
 vi.mock("../_core/sdk", () => ({ sdk: { authenticateRequest } }));
-vi.mock("../db", () => ({ getTelegramSettingsByTaskUid: getSettings, getTelegramSettingsByPaperReportTaskUid: getPaperReportSettings, getClosedPaperTradesForDate: getClosedTrades, updatePaperReportSettings: updatePaperReport, createPaperBotAudit: createAudit, getTelegramAlertRules: getRules, getLastSignal: getLast, getProcessedCandle: getProcessed, getTelegramDeliveryLog: getDelivery, getSignalOutcomes, getNewsAiSettings: vi.fn(async () => undefined), saveAiAnalysis: vi.fn(), saveNewsItem: vi.fn(), createTelegramDeliveryLog: createDelivery, updateTelegramDeliveryLog: updateDelivery, markProcessedCandle: markProcessed, saveSignalSnapshot: saveSnapshot, saveHeartbeatRun: saveHeartbeat }));
+vi.mock("../db", () => ({ getTelegramSettingsByTaskUid: getSettings, getTelegramSettingsByPaperReportTaskUid: getPaperReportSettings, getClosedPaperTradesForDate: getClosedTrades, updatePaperReportSettings: updatePaperReport, createPaperBotAudit: createAudit, getTelegramAlertRules: getRules, getQualityThresholdOverrides: getQualityOverrides, getLastSignal: getLast, getProcessedCandle: getProcessed, getTelegramDeliveryLog: getDelivery, getSignalOutcomes, getNewsAiSettings: vi.fn(async () => undefined), saveAiAnalysis: vi.fn(), saveNewsItem: vi.fn(), createTelegramDeliveryLog: createDelivery, updateTelegramDeliveryLog: updateDelivery, markProcessedCandle: markProcessed, saveSignalSnapshot: saveSnapshot, saveHeartbeatRun: saveHeartbeat }));
 vi.mock("../market/binance", () => ({ analyzeAllMarkets: analyze }));
 vi.mock("../market/news", () => ({ fetchRelevantNews: vi.fn(async () => []) }));
 vi.mock("./telegram", () => ({ formatSignalAlert: vi.fn(() => "alert"), generateSignalAiAnalysis: vi.fn(async () => "AI test analysis"), buildSignalInlineKeyboard: vi.fn(() => ({ inline_keyboard: [] })), sendTelegramMessage: send }));
@@ -18,7 +18,7 @@ function response() {
 const market = { exchange: "Binance", symbol: "BTCUSDT", interval: "1h", candleOpenTime: 1000, candleClosedAt: 4600, price: 100, indicators: { label: "Bullish", score: 75 }, levels: { entry: 99, takeProfit1: 105, takeProfit2: 110, stopLoss: 95 } } as any;
 
 describe("paperPnlReportHandler", () => {
-  beforeEach(() => { vi.clearAllMocks(); send.mockResolvedValue({ ok: true, result: { message_id: 9 } }); updatePaperReport.mockResolvedValue(undefined); createAudit.mockResolvedValue(undefined); });
+  beforeEach(() => { vi.clearAllMocks(); getQualityOverrides.mockResolvedValue([]); send.mockResolvedValue({ ok: true, result: { message_id: 9 } }); updatePaperReport.mockResolvedValue(undefined); createAudit.mockResolvedValue(undefined); });
 
   it("rejects non-cron callers", async () => {
     authenticateRequest.mockResolvedValue({ isCron: false });
@@ -52,7 +52,7 @@ describe("paperPnlReportHandler", () => {
 });
 
 describe("refreshSignalsHandler", () => {
-  beforeEach(() => { vi.clearAllMocks(); getRules.mockResolvedValue([]); getSignalOutcomes.mockResolvedValue([]); analyze.mockResolvedValue([market]); getDelivery.mockResolvedValue(undefined); createDelivery.mockResolvedValue({ id: 1, status: "pending", attempts: 0 }); saveSnapshot.mockResolvedValue(undefined); updateDelivery.mockResolvedValue(undefined); saveHeartbeat.mockResolvedValue(undefined); send.mockResolvedValue({ ok: true, result: { message_id: 1 } }); });
+  beforeEach(() => { vi.clearAllMocks(); getRules.mockResolvedValue([]); getQualityOverrides.mockResolvedValue([]); getSignalOutcomes.mockResolvedValue([]); analyze.mockResolvedValue([market]); getDelivery.mockResolvedValue(undefined); createDelivery.mockResolvedValue({ id: 1, status: "pending", attempts: 0 }); saveSnapshot.mockResolvedValue(undefined); updateDelivery.mockResolvedValue(undefined); saveHeartbeat.mockResolvedValue(undefined); send.mockResolvedValue({ ok: true, result: { message_id: 1 } }); });
 
   it("rejects non-cron callers", async () => {
     authenticateRequest.mockResolvedValue({ isCron: false });
@@ -125,6 +125,19 @@ describe("refreshSignalsHandler", () => {
     await refreshSignalsHandler({} as any, res);
     expect(send).toHaveBeenCalledOnce();
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ alerts: 1 }));
+  });
+
+  it("uses an exchange override before the global quality threshold", async () => {
+    authenticateRequest.mockResolvedValue({ isCron: true, taskUid: "task-1" });
+    getSettings.mockResolvedValue({ userId: 7, enabled: 1, alertThreshold: 50, qualityAlertThreshold: 20, sendMode: "strong_only", botToken: "token", chatId: "chat" });
+    getQualityOverrides.mockResolvedValue([{ exchange: "Binance", threshold: 30 }]);
+    getProcessed.mockResolvedValue(undefined);
+    analyze.mockResolvedValue([{ ...market, indicators: { label: "Neutral", score: 10, confidence: 42 }, signalStatus: "No Trade", liquidity: { isValid: false }, signalQuality: { penalty: 24, isTradeEligible: false, reasons: ["Thanh khoản chưa đạt"] } }]);
+    const res = response();
+    await refreshSignalsHandler({} as any, res);
+    expect(send).not.toHaveBeenCalled();
+    expect(markProcessed).toHaveBeenCalledOnce();
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ alerts: 0 }));
   });
 
   it("records a failed delivery without marking the candle, so the next Heartbeat can retry", async () => {

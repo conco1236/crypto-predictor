@@ -445,3 +445,11 @@
 - [x] Áp dụng threshold tùy chỉnh trong Heartbeat quality alert gate với fallback mặc định an toàn
 - [x] Thêm điều khiển ngưỡng và mô tả quality alert vào giao diện Telegram
 - [x] Kiểm thử migration, ownership, threshold logic, responsive UI và checkpoint
+
+## User request: threshold history, alert preview and per-exchange quality controls
+
+- [x] Lưu và hiển thị lịch sử thay đổi quality threshold theo tài khoản
+- [x] Preview số quality alert theo ngưỡng từ quality snapshot đã lưu, không suy diễn dữ liệu thiếu
+- [x] Thêm quality threshold override riêng cho Binance, Bybit và OKX
+- [x] Áp dụng precedence threshold theo sàn trong manual persist/Heartbeat
+- [x] Kiểm thử schema, ownership, resolution, preview transformation, responsive UI và checkpoint

@@ -9,8 +9,9 @@ import { createHeartbeatJob, updateHeartbeatJob } from "./_core/heartbeat";
 import { analyzeAllMarkets, fetchExchangeCandles, type ExchangeName, type IntervalName, type SymbolName } from "./market/binance";
 import { calibrateConfidence, evaluateSignalOutcome, summarizeOutcomes } from "./market/outcomes";
 import { summarizeQualityBacktest } from "./market/qualityMetrics";
+import { buildQualityAlertPreview, resolveQualityThreshold } from "./services/qualityThresholds";
 import { fetchRelevantNews } from "./market/news";
-import { createReanalysisRequest, createTelegramDeliveryLog, deleteTelegramAlertRule, getHeartbeatHistory, getHeartbeatHistoryPage, getLastSignal, getProcessedCandle, getRecentReanalysis, getRiskHistories, getRiskHistory, getSignalHistory, getSignalSnapshotById, getTelegramAlertRules, getTelegramDeliveryHistory, getTelegramDeliveryHistoryPage, getTelegramDeliveryLog, getTelegramDeliveryLogById, getTelegramSettings, getSignalOutcomes, getNewsAiSettings, getNewsHistory, getNewsHistoryPage, getAiHistory, getAiHistoryPage, markProcessedCandle, saveAiAnalysis, saveNewsAiSettings, saveNewsItem, saveSignalSnapshot, saveTelegramSettings, updateReanalysisRequest, updateTelegramDeliveryLog, upsertSignalOutcome, upsertTelegramAlertRule, createPaperTrade, getPaperTrades, updatePaperTrade, createPaperBotAudit, getPaperBotAudit, updatePaperReportSettings } from "./db";
+import { createReanalysisRequest, createTelegramDeliveryLog, deleteQualityThresholdOverride, deleteTelegramAlertRule, getHeartbeatHistory, getHeartbeatHistoryPage, getLastSignal, getProcessedCandle, getQualityThresholdHistory, getQualityThresholdOverrides, getRecentReanalysis, getRiskHistories, getRiskHistory, getSignalHistory, getSignalSnapshotById, getTelegramAlertRules, getTelegramDeliveryHistory, getTelegramDeliveryHistoryPage, getTelegramDeliveryLog, getTelegramDeliveryLogById, getTelegramSettings, getSignalOutcomes, getNewsAiSettings, getNewsHistory, getNewsHistoryPage, getAiHistory, getAiHistoryPage, markProcessedCandle, saveAiAnalysis, saveNewsAiSettings, saveNewsItem, saveQualityThresholdOverride, saveSignalSnapshot, saveTelegramSettings, updateReanalysisRequest, updateTelegramDeliveryLog, upsertSignalOutcome, upsertTelegramAlertRule, createPaperTrade, getPaperTrades, updatePaperTrade, createPaperBotAudit, getPaperBotAudit, updatePaperReportSettings } from "./db";
 import { buildSignalInlineKeyboard, formatSignalAlert, generateSignalAiAnalysis, sendTelegramMessage } from "./services/telegram";
 import { resolveAlertRule } from "./services/alertRules";
 import { isPaperBotPaused } from "./services/telegramWebhook";
@@ -63,6 +64,7 @@ export const appRouter = router({
       const settings = await getTelegramSettings(ctx.user.id);
       const newsSettings = await getNewsAiSettings(ctx.user.id);
       const rules = await getTelegramAlertRules(ctx.user.id);
+      const qualityOverrides = await getQualityThresholdOverrides(ctx.user.id);
       const persistedOutcomes = await getSignalOutcomes(ctx.user.id, 200);
       let saved = 0;
       let alerts = 0;
@@ -73,7 +75,7 @@ export const appRouter = router({
         await saveSignalSnapshot({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, price: a.price, label: a.indicators.label, score: a.indicators.score, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, risk: a.risk, signalQuality: a.signalQuality, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
         saved++;
         const strongSignal = Boolean(alertSettings && (a.signalStatus ?? "Trade") === "Trade" && (a.liquidity?.isValid ?? true) && Math.abs(a.indicators.score) >= alertSettings.alertThreshold);
-        const qualityAlert = Boolean(alertSettings && (a.signalQuality?.penalty ?? 0) >= (alertSettings.qualityAlertThreshold ?? 20));
+        const qualityAlert = Boolean(alertSettings && (a.signalQuality?.penalty ?? 0) >= resolveQualityThreshold(a.exchange, alertSettings.qualityAlertThreshold ?? 20, qualityOverrides));
         const modeAllowsAlert = (alertSettings?.sendMode ?? "all_candles") === "all_candles" || strongSignal || qualityAlert;
         const shouldAlert = Boolean(alertSettings?.enabled && alertSettings.botToken && alertSettings.chatId && modeAllowsAlert);
         if (!shouldAlert) {
@@ -208,6 +210,17 @@ export const appRouter = router({
         }
       }
       return updatePaperReportSettings(ctx.user.id, { enabled: input.enabled ? 1 : 0, cronTaskUid: taskUid ?? null, ...(input.enabled ? {} : { lastDate: null }) });
+    }),
+    qualityControls: protectedProcedure.query(async ({ ctx }) => {
+      const settings = await getTelegramSettings(ctx.user.id);
+      const globalThreshold = settings?.qualityAlertThreshold ?? 20;
+      const [overrides, history, snapshots] = await Promise.all([getQualityThresholdOverrides(ctx.user.id), getQualityThresholdHistory(ctx.user.id, 30), getSignalHistory(ctx.user.id, 200)]);
+      return { globalThreshold, overrides, history, preview: buildQualityAlertPreview(snapshots, globalThreshold, overrides) };
+    }),
+    saveQualityOverride: protectedProcedure.input(z.object({ exchange: z.enum(["Binance", "Bybit", "OKX"]), threshold: z.number().int().min(5).max(80) })).mutation(({ ctx, input }) => saveQualityThresholdOverride(ctx.user.id, input.exchange, input.threshold)),
+    resetQualityOverride: protectedProcedure.input(z.object({ exchange: z.enum(["Binance", "Bybit", "OKX"]) })).mutation(async ({ ctx, input }) => {
+      const settings = await getTelegramSettings(ctx.user.id);
+      return deleteQualityThresholdOverride(ctx.user.id, input.exchange, settings?.qualityAlertThreshold ?? 20);
     }),
     test: protectedProcedure.mutation(async ({ ctx }) => {
       const settings = await getTelegramSettings(ctx.user.id);

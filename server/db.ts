@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/mysql2";
 import { and, desc, eq, gt, like } from "drizzle-orm";
-import { aiAnalyses, aiReanalysisRequests, heartbeatRuns, InsertUser, newsAiSettings, newsItems, paperBotAuditLogs, paperTrades, signalOutcomes, signalProcessingState, signalSnapshots, telegramAlertRules, telegramDeliveryLogs, telegramSettings, users } from "../drizzle/schema";
+import { aiAnalyses, aiReanalysisRequests, heartbeatRuns, InsertUser, newsAiSettings, newsItems, paperBotAuditLogs, paperTrades, signalOutcomes, signalProcessingState, signalSnapshots, telegramAlertRules, telegramDeliveryLogs, telegramQualityThresholdHistory, telegramQualityThresholdOverrides, telegramSettings, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -79,8 +79,40 @@ export async function saveTelegramSettings(userId: number, data: { botToken: str
   if (!db) throw new Error("Database chưa sẵn sàng");
   const sendMode = data.sendMode ?? "all_candles";
   const qualityAlertThreshold = data.qualityAlertThreshold ?? 20;
+  const previous = await getTelegramSettings(userId);
   await db.insert(telegramSettings).values({ userId, ...data, qualityAlertThreshold, sendMode, scheduleCronTaskUid }).onDuplicateKeyUpdate({ set: { ...data, qualityAlertThreshold, sendMode, ...(scheduleCronTaskUid ? { scheduleCronTaskUid } : {}), updatedAt: new Date() } });
+  if (previous && previous.qualityAlertThreshold !== qualityAlertThreshold) await db.insert(telegramQualityThresholdHistory).values({ userId, exchange: null, previousThreshold: previous.qualityAlertThreshold, nextThreshold: qualityAlertThreshold, source: "global" });
   return getTelegramSettings(userId);
+}
+
+export async function getQualityThresholdOverrides(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(telegramQualityThresholdOverrides).where(eq(telegramQualityThresholdOverrides.userId, userId)).orderBy(telegramQualityThresholdOverrides.exchange);
+}
+
+export async function saveQualityThresholdOverride(userId: number, exchange: string, threshold: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database chưa sẵn sàng");
+  const existing = await db.select().from(telegramQualityThresholdOverrides).where(and(eq(telegramQualityThresholdOverrides.userId, userId), eq(telegramQualityThresholdOverrides.exchange, exchange))).limit(1);
+  await db.insert(telegramQualityThresholdOverrides).values({ userId, exchange, threshold }).onDuplicateKeyUpdate({ set: { threshold, updatedAt: new Date() } });
+  if (!existing[0] || existing[0].threshold !== threshold) await db.insert(telegramQualityThresholdHistory).values({ userId, exchange, previousThreshold: existing[0]?.threshold ?? null, nextThreshold: threshold, source: "exchange" });
+  return getQualityThresholdOverrides(userId);
+}
+
+export async function deleteQualityThresholdOverride(userId: number, exchange: string, fallbackThreshold: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const existing = await db.select().from(telegramQualityThresholdOverrides).where(and(eq(telegramQualityThresholdOverrides.userId, userId), eq(telegramQualityThresholdOverrides.exchange, exchange))).limit(1);
+  await db.delete(telegramQualityThresholdOverrides).where(and(eq(telegramQualityThresholdOverrides.userId, userId), eq(telegramQualityThresholdOverrides.exchange, exchange)));
+  if (existing[0]) await db.insert(telegramQualityThresholdHistory).values({ userId, exchange, previousThreshold: existing[0].threshold, nextThreshold: fallbackThreshold, source: "exchange_reset" });
+  return getQualityThresholdOverrides(userId);
+}
+
+export async function getQualityThresholdHistory(userId: number, limit = 30) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(telegramQualityThresholdHistory).where(eq(telegramQualityThresholdHistory.userId, userId)).orderBy(desc(telegramQualityThresholdHistory.createdAt)).limit(clampHistoryLimit(limit, 30, 100));
 }
 
 export async function getTelegramAlertRules(userId: number) {
