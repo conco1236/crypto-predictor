@@ -580,3 +580,9 @@
 - [x] Rà soát coverage callback Tóm tắt tin tức 1h hiện có và xác định nhánh thiếu
 - [x] Bổ sung unit tests cho RSS tắt, không có tin, lỗi fetch và quyền sở hữu snapshot
 - [x] Chạy TypeScript/full suite, kiểm tra regression và phát hành checkpoint
+
+## User request: GitHub sync for extended 1h news tests
+
+- [x] Kiểm tra thay đổi checkpoint, remote và tệp nhạy cảm trước khi push
+- [ ] Commit và push unit test mở rộng trên nhánh main
+- [ ] Xác minh commit mới nhất trên GitHub
