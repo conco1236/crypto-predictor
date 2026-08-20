@@ -424,3 +424,10 @@
 - [x] Hiển thị các dry-run scenario gần nhất từ local persistence trên Platform Overview
 - [x] Thêm nút nạp an toàn scenario vào Execution Lab mà không chứa secrets
 - [x] Kiểm thử persistence, responsive UI và regression trước checkpoint
+
+## User request: improve signal accuracy and practical usefulness
+
+- [x] Rà soát score, multi-timeframe, liquidity, data quality và outcome calibration hiện có
+- [x] Thêm guardrail confidence theo độ đồng thuận dữ liệu và freshness đa sàn
+- [x] Làm rõ lý do giảm confidence hoặc No Trade qua confidence reasons, data warnings và signal reason
+- [x] Kiểm thử logic accuracy, regression và phát hành checkpoint

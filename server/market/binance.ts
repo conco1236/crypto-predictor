@@ -1,5 +1,6 @@
 import { analyzeCandles, Candle, IndicatorSnapshot, riskAssessment, tradeLevels } from "./indicators";
 import type { SignalStatus, TimeframeConfirmation } from "./multiTimeframe";
+import { assessSignalQuality, type SignalQualityResult } from "./signalQuality";
 
 export const SYMBOLS = ["BTCUSDT", "ETHUSDT"] as const;
 export const INTERVALS = ["15m", "1h", "4h", "1d"] as const;
@@ -42,6 +43,7 @@ export type MarketAnalysis = {
   signalStatus?: SignalStatus;
   signalReason?: string;
   timeframeConfirmation?: TimeframeConfirmation;
+  signalQuality?: SignalQualityResult;
 };
 
 const BINANCE_BASE = "https://api.binance.com";
@@ -188,5 +190,33 @@ export async function analyzeAllMarkets() {
     return { ...analysis, liquidity: { ...liquidity, volumeRatio: analysis.indicators.volumeRatio, crossExchangeAgreement, isValid: liquidity.isValid && crossExchangeAgreement && analysis.indicators.volumeRatio >= 0.8, warnings } };
   });
   const { applyTimeframeConfirmation } = await import("./multiTimeframe");
-  return applyTimeframeConfirmation(enriched);
+  const confirmed = applyTimeframeConfirmation(enriched);
+  return confirmed.map(analysis => {
+    const peers = confirmed.filter(peer => peer.symbol === analysis.symbol && peer.interval === analysis.interval);
+    const prices = peers.map(peer => peer.price).filter(Number.isFinite).sort((a, b) => a - b);
+    const medianPrice = prices[Math.floor(prices.length / 2)] ?? analysis.price;
+    const priceDeviationBps = medianPrice > 0 ? Math.abs(analysis.price - medianPrice) / medianPrice * 10_000 : 999;
+    const directionalAgreement = peers.filter(peer => peer.indicators.label === analysis.indicators.label && peer.indicators.label !== "Neutral").length;
+    const conflictingExchanges = peers.filter(peer => peer.indicators.label !== "Neutral" && peer.indicators.label !== analysis.indicators.label).length;
+    const quality = assessSignalQuality({
+      baseConfidence: analysis.indicators.confidence,
+      sourceLatencyMs: analysis.dataQuality.sourceLatencyMs,
+      dataWarnings: analysis.dataQuality.warnings,
+      liquidityValid: Boolean(analysis.liquidity?.isValid),
+      crossExchangeVolumeAgreement: Boolean(analysis.liquidity?.crossExchangeAgreement),
+      priceDeviationBps,
+      directionalAgreement,
+      conflictingExchanges,
+    });
+    const qualitySummary = quality.penalty ? `Quality gate: -${quality.penalty} confidence · ${quality.reasons.join("; ")}` : `Quality gate: xác nhận liên sàn đạt (${directionalAgreement}/${peers.length} cùng hướng)`;
+    const shouldBlockTrade = analysis.signalStatus === "Trade" && !quality.isTradeEligible;
+    return {
+      ...analysis,
+      indicators: { ...analysis.indicators, confidence: quality.confidence, confidenceReasons: [...analysis.indicators.confidenceReasons, qualitySummary] },
+      dataQuality: { ...analysis.dataQuality, warnings: quality.penalty ? [...analysis.dataQuality.warnings, qualitySummary] : analysis.dataQuality.warnings },
+      signalQuality: quality,
+      signalStatus: shouldBlockTrade ? "No Trade" : analysis.signalStatus,
+      signalReason: shouldBlockTrade ? `No Trade do quality gate: ${quality.reasons.join(" · ")}` : analysis.signalReason,
+    };
+  });
 }
