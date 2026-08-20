@@ -412,3 +412,9 @@
 - [x] Thêm trang diagnostics cho trạng thái, freshness và latency theo Binance/Bybit/OKX
 - [x] Tối ưu production plugin scope: loại JSX location/debug collector khỏi production build; build vẫn phụ thuộc giới hạn bộ nhớ sandbox
 - [x] Viết tests, kiểm tra responsive, chạy build/regression và phát hành checkpoint
+
+## User request: build website from crypto trend signal skill blueprint
+
+- [x] Đọc skill đính kèm và map blueprint vào cấu trúc webapp hiện tại
+- [x] Cải thiện kiến trúc thông tin, điều hướng và trải nghiệm website theo blueprint
+- [x] Kiểm thử UI/responsive, regression và phát hành checkpoint
