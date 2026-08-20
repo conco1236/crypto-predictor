@@ -1,6 +1,6 @@
 export type AlertRuleScope = { symbol: string; exchange: string; interval: string };
 export type AlertRule = AlertRuleScope & { alertThreshold: number; enabled: number };
-export type TelegramDefaults = { alertThreshold: number; enabled: number; botToken: string; chatId: string; sendMode?: "all_candles" | "strong_only" };
+export type TelegramDefaults = { alertThreshold: number; qualityAlertThreshold?: number; enabled: number; botToken: string; chatId: string; sendMode?: "all_candles" | "strong_only" };
 
 const scoreScope = (rule: AlertRule, scope: AlertRuleScope) =>
   (rule.symbol === scope.symbol ? 4 : rule.symbol === "*" ? 0 : -100) +

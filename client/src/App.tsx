@@ -10,10 +10,11 @@ import TradingBot from "./pages/TradingBot";
 import Operations from "./pages/Operations";
 import FeedDiagnostics from "./pages/FeedDiagnostics";
 import PlatformOverview from "./pages/PlatformOverview";
+import QualityAlertSettings from "./pages/QualityAlertSettings";
 
 function App() {
   const page = new URLSearchParams(window.location.search).get("page");
-  return <ErrorBoundary><ThemeProvider defaultTheme="dark" switchable><TooltipProvider><Toaster />{page === "backtest" ? <Backtest /> : page === "news" ? <NewsCenter /> : page === "glossary" ? <Glossary /> : page === "trading-bot" ? <TradingBot /> : page === "operations" ? <Operations /> : page === "diagnostics" ? <FeedDiagnostics /> : page === "platform" ? <PlatformOverview /> : <Home />}</TooltipProvider></ThemeProvider></ErrorBoundary>;
+  return <ErrorBoundary><ThemeProvider defaultTheme="dark" switchable><TooltipProvider><Toaster />{page === "backtest" ? <Backtest /> : page === "news" ? <NewsCenter /> : page === "glossary" ? <Glossary /> : page === "trading-bot" ? <TradingBot /> : page === "operations" ? <Operations /> : page === "diagnostics" ? <FeedDiagnostics /> : page === "platform" ? <PlatformOverview /> : page === "quality-alerts" ? <QualityAlertSettings /> : <Home />}</TooltipProvider></ThemeProvider></ErrorBoundary>;
 }
 
 export default App;

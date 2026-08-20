@@ -70,10 +70,11 @@ export const appRouter = router({
         const processed = await getProcessedCandle(ctx.user.id, a.exchange, a.symbol, a.interval);
         if (processed && processed.candleOpenTime >= a.candleOpenTime) continue;
         const alertSettings = settings ? resolveAlertRule(settings, rules, { exchange: a.exchange, symbol: a.symbol, interval: a.interval }) : undefined;
-        await saveSignalSnapshot({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, price: a.price, label: a.indicators.label, score: a.indicators.score, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, risk: a.risk, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
+        await saveSignalSnapshot({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, price: a.price, label: a.indicators.label, score: a.indicators.score, entry: a.levels.entry, takeProfit1: a.levels.takeProfit1, takeProfit2: a.levels.takeProfit2, stopLoss: a.levels.stopLoss, indicators: JSON.stringify({ ...a.indicators, risk: a.risk, signalQuality: a.signalQuality, candleOpenTime: a.candleOpenTime, candleClosedAt: a.candleClosedAt }) });
         saved++;
         const strongSignal = Boolean(alertSettings && (a.signalStatus ?? "Trade") === "Trade" && (a.liquidity?.isValid ?? true) && Math.abs(a.indicators.score) >= alertSettings.alertThreshold);
-        const modeAllowsAlert = (alertSettings?.sendMode ?? "all_candles") === "all_candles" || strongSignal;
+        const qualityAlert = Boolean(alertSettings && (a.signalQuality?.penalty ?? 0) >= (alertSettings.qualityAlertThreshold ?? 20));
+        const modeAllowsAlert = (alertSettings?.sendMode ?? "all_candles") === "all_candles" || strongSignal || qualityAlert;
         const shouldAlert = Boolean(alertSettings?.enabled && alertSettings.botToken && alertSettings.chatId && modeAllowsAlert);
         if (!shouldAlert) {
           await markProcessedCandle({ userId: ctx.user.id, exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime });
@@ -175,7 +176,7 @@ export const appRouter = router({
       const settings = await getTelegramSettings(ctx.user.id);
       return settings ? { ...settings, botToken: settings.botToken.replace(/.(?=.{4})/g, "•") } : null;
     }),
-    save: protectedProcedure.input(z.object({ botToken: z.string().min(10), chatId: z.string().min(1), alertThreshold: z.number().min(25).max(100), sendMode: z.enum(["all_candles", "strong_only"]).default("all_candles"), enabled: z.boolean() })).mutation(async ({ ctx, input }) => {
+    save: protectedProcedure.input(z.object({ botToken: z.string().min(10), chatId: z.string().min(1), alertThreshold: z.number().min(25).max(100), qualityAlertThreshold: z.number().int().min(5).max(80).default(20), sendMode: z.enum(["all_candles", "strong_only"]).default("all_candles"), enabled: z.boolean() })).mutation(async ({ ctx, input }) => {
       const current = await getTelegramSettings(ctx.user.id);
       const token = input.botToken.includes("•") ? current?.botToken ?? "" : input.botToken;
       if (!token) throw new Error("Cần nhập Telegram Bot Token hợp lệ");
@@ -190,7 +191,7 @@ export const appRouter = router({
           await updateHeartbeatJob(taskUid, jobDefinition, session);
         }
       }
-      return saveTelegramSettings(ctx.user.id, { botToken: token, chatId: input.chatId, alertThreshold: input.alertThreshold, sendMode: input.sendMode, enabled: input.enabled ? 1 : 0 }, taskUid);
+      return saveTelegramSettings(ctx.user.id, { botToken: token, chatId: input.chatId, alertThreshold: input.alertThreshold, qualityAlertThreshold: input.qualityAlertThreshold, sendMode: input.sendMode, enabled: input.enabled ? 1 : 0 }, taskUid);
     }),
     setPaperReport: protectedProcedure.input(z.object({ enabled: z.boolean() })).mutation(async ({ ctx, input }) => {
       const current = await getTelegramSettings(ctx.user.id);

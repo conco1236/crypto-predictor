@@ -438,3 +438,10 @@
 - [x] Gửi cảnh báo Telegram khi confidence bị giảm mạnh do quality gate
 - [x] Hiển thị biểu đồ phân bố quality penalty theo Binance/Bybit/OKX
 - [x] Kiểm thử contracts, data transformations, responsive UI và phát hành checkpoint
+
+## User request: configurable Telegram quality penalty threshold
+
+- [x] Thêm quality penalty threshold theo tài khoản vào Telegram settings schema/migration
+- [x] Áp dụng threshold tùy chỉnh trong Heartbeat quality alert gate với fallback mặc định an toàn
+- [x] Thêm điều khiển ngưỡng và mô tả quality alert vào giao diện Telegram
+- [x] Kiểm thử migration, ownership, threshold logic, responsive UI và checkpoint

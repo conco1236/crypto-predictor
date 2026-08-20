@@ -74,11 +74,12 @@ export async function updatePaperReportSettings(userId: number, data: { enabled?
   return getTelegramSettings(userId);
 }
 
-export async function saveTelegramSettings(userId: number, data: { botToken: string; chatId: string; alertThreshold: number; sendMode?: "all_candles" | "strong_only"; enabled: number }, scheduleCronTaskUid?: string) {
+export async function saveTelegramSettings(userId: number, data: { botToken: string; chatId: string; alertThreshold: number; qualityAlertThreshold?: number; sendMode?: "all_candles" | "strong_only"; enabled: number }, scheduleCronTaskUid?: string) {
   const db = await getDb();
   if (!db) throw new Error("Database chưa sẵn sàng");
   const sendMode = data.sendMode ?? "all_candles";
-  await db.insert(telegramSettings).values({ userId, ...data, sendMode, scheduleCronTaskUid }).onDuplicateKeyUpdate({ set: { ...data, sendMode, ...(scheduleCronTaskUid ? { scheduleCronTaskUid } : {}), updatedAt: new Date() } });
+  const qualityAlertThreshold = data.qualityAlertThreshold ?? 20;
+  await db.insert(telegramSettings).values({ userId, ...data, qualityAlertThreshold, sendMode, scheduleCronTaskUid }).onDuplicateKeyUpdate({ set: { ...data, qualityAlertThreshold, sendMode, ...(scheduleCronTaskUid ? { scheduleCronTaskUid } : {}), updatedAt: new Date() } });
   return getTelegramSettings(userId);
 }
 

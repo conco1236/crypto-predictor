@@ -1,0 +1,1 @@
+ALTER TABLE `telegram_settings` ADD `qualityAlertThreshold` int DEFAULT 20 NOT NULL;

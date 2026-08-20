@@ -36,6 +36,13 @@ describe("telegram.save Heartbeat synchronization", () => {
     expect(saveSettings).toHaveBeenCalledWith(1, expect.objectContaining({ enabled: 1 }), "task-existing");
   });
 
+  it("persists a user-selected quality penalty threshold with the authenticated user's settings", async () => {
+    getSettings.mockResolvedValue({ userId: 1, botToken: "1234567890:TESTTOKEN", scheduleCronTaskUid: "task-existing" });
+    const caller = appRouter.createCaller(ctx);
+    await caller.telegram.save({ botToken: "1234567890:TESTTOKEN", chatId: "chat-1", alertThreshold: 60, qualityAlertThreshold: 31, enabled: true });
+    expect(saveSettings).toHaveBeenCalledWith(1, expect.objectContaining({ qualityAlertThreshold: 31 }), "task-existing");
+  });
+
   it("returns delivery and heartbeat history for the signed-in user", async () => {
     getDeliveryHistory.mockResolvedValue([{ id: 1, status: "failed", attempts: 2 }]);
     getHeartbeatHistory.mockResolvedValue([{ id: 2, status: "success", alertCount: 0 }]);
