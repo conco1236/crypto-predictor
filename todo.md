@@ -568,3 +568,9 @@
 - [x] Thêm nút Tóm tắt tin tức 1h chỉ cho alert khung 1h với allowlist/ownership
 - [x] Tóm tắt RSS có nguồn, rate limit và lưu lịch sử quan sát theo tài khoản
 - [x] Kiểm thử scope 1h, callback safety, rate limit, responsive và phát hành checkpoint
+
+## User request: GitHub synchronization
+
+- [x] Kiểm tra trạng thái repository, remote và loại trừ secrets/runtime files
+- [ ] Commit các thay đổi callback Telegram mới nhất trên nhánh main
+- [ ] Push và xác minh commit trên GitHub
