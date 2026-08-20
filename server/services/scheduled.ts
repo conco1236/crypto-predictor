@@ -145,7 +145,7 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
         const attempts = currentCriticalAlert.attempts + 1;
         await updateMomentumCriticalAlert(currentCriticalAlert.id, { status: "pending", attempts, lastError: null });
         try {
-          const result = await sendTelegramMessage(alertSettings.botToken, alertSettings.chatId, currentCriticalAlert.message ?? "<b>⚠️ Momentum Critical</b>", buildMomentumCriticalInlineKeyboard({ exchange: a.exchange, symbol: a.symbol, interval: a.interval }));
+          const result = await sendTelegramMessage(alertSettings.botToken, alertSettings.chatId, currentCriticalAlert.message ?? "<b>⚠️ Momentum Critical</b>", buildMomentumCriticalInlineKeyboard({ exchange: a.exchange, symbol: a.symbol, interval: a.interval, targetCandleClosedAt: currentCriticalAlert.candleClosedAt }));
           await updateMomentumCriticalAlert(currentCriticalAlert.id, { status: "sent", telegramMessageId: result.result?.message_id ? String(result.result.message_id) : null, lastError: null, sentAt: new Date() });
           alerts++; criticalAlerts++;
         } catch (error) {

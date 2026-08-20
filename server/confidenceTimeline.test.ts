@@ -4,7 +4,7 @@ import * as db from "./db";
 import { appRouter } from "./routers";
 import { ABRUPT_CONFIDENCE_DROP_POINTS, annotateConfidenceDrops, summarizeConfidenceTimeline } from "../client/src/lib/confidenceTimeline";
 import { classifyConfidenceMomentum, detectCriticalMomentumTransition } from "../shared/confidenceMomentum";
-import { buildConfidenceTimelinePath, parseConfidenceTimelineFilter } from "../shared/confidenceTimelineLink";
+import { buildConfidenceTimelinePath, parseConfidenceTimelineFilter, parseConfidenceTimelineTarget } from "../shared/confidenceTimelineLink";
 
 describe("confidence timeline contracts", () => {
   const createdAt = new Date("2026-08-20T00:00:00.000Z");
@@ -39,8 +39,10 @@ describe("confidence timeline contracts", () => {
     expect(detectCriticalMomentumTransition([...history, current], { ...current, candleClosedAt: 4, confidence: 52 }).transitioned).toBe(false);
   });
   it("builds and parses filtered Confidence Timeline deep links with safe defaults", () => {
-    expect(buildConfidenceTimelinePath({ exchange: "Bybit", symbol: "ETHUSDT", interval: "4h" })).toBe("/?page=confidence-timeline&exchange=Bybit&symbol=ETHUSDT&interval=4h");
+    expect(buildConfidenceTimelinePath({ exchange: "Bybit", symbol: "ETHUSDT", interval: "4h" }, 1_700_000_000_000)).toBe("/?page=confidence-timeline&exchange=Bybit&symbol=ETHUSDT&interval=4h&target=1700000000000");
     expect(parseConfidenceTimelineFilter("?exchange=Bybit&symbol=ETHUSDT&interval=4h")).toEqual({ exchange: "Bybit", symbol: "ETHUSDT", interval: "4h" });
+    expect(parseConfidenceTimelineTarget("?target=1700000000000")).toBe(1_700_000_000_000);
+    expect(parseConfidenceTimelineTarget("?target=not-a-time")).toBeNull();
     expect(parseConfidenceTimelineFilter("?exchange=unknown&symbol=SOLUSDT&interval=2h")).toEqual({ exchange: "Binance", symbol: "BTCUSDT", interval: "1h" });
   });
   it("queries the protected confidence history with asset, exchange, timeframe and user scope", async () => {

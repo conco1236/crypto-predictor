@@ -504,3 +504,9 @@
 - [x] Thêm deep link Confidence Timeline theo exchange, tài sản và timeframe trong Critical alert
 - [x] Đọc query filters trên Confidence Timeline và khởi tạo bộ lọc từ liên kết Telegram
 - [x] Kiểm thử formatter, routing query filters, responsive và phát hành checkpoint
+
+## User request: focus Critical candle from Telegram
+
+- [x] Thêm target candle timestamp vào Critical Telegram deep link theo allowlist an toàn
+- [x] Tự cuộn và làm nổi bật marker/bảng decision context của nến Critical trên Confidence Timeline
+- [x] Kiểm thử deep link target, accessibility, responsive và phát hành checkpoint

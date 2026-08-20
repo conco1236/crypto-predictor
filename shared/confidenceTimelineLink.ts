@@ -17,11 +17,18 @@ export function parseConfidenceTimelineFilter(search: string): ConfidenceTimelin
   };
 }
 
-export function buildConfidenceTimelinePath(filters: ConfidenceTimelineFilter) {
+export function parseConfidenceTimelineTarget(search: string) {
+  const raw = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search).get("target");
+  const value = raw == null ? NaN : Number(raw);
+  return Number.isSafeInteger(value) && value >= 946_684_800_000 && value <= 4_102_444_800_000 ? value : null;
+}
+
+export function buildConfidenceTimelinePath(filters: ConfidenceTimelineFilter, targetCandleClosedAt?: number | null) {
   const params = new URLSearchParams({ page: "confidence-timeline", exchange: filters.exchange, symbol: filters.symbol, interval: filters.interval });
+  if (targetCandleClosedAt != null && Number.isSafeInteger(targetCandleClosedAt) && targetCandleClosedAt >= 946_684_800_000 && targetCandleClosedAt <= 4_102_444_800_000) params.set("target", String(targetCandleClosedAt));
   return `/?${params.toString()}`;
 }
 
-export function buildConfidenceTimelineUrl(filters: ConfidenceTimelineFilter, baseUrl: string) {
-  return `${baseUrl.replace(/\/$/, "")}${buildConfidenceTimelinePath(filters)}`;
+export function buildConfidenceTimelineUrl(filters: ConfidenceTimelineFilter, baseUrl: string, targetCandleClosedAt?: number | null) {
+  return `${baseUrl.replace(/\/$/, "")}${buildConfidenceTimelinePath(filters, targetCandleClosedAt)}`;
 }

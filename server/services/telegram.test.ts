@@ -55,9 +55,9 @@ describe("telegram alerts", () => {
 
   it("adds a filtered Confidence Timeline link and safe inline observation button to a Critical alert", () => {
     const message = formatMomentumCriticalAlert({ exchange: "OKX", symbol: "ETHUSDT", interval: "4h", candleClosedAt: 1_700_000_000_000, previousConfidence: 76, confidence: 54, delta: -22, reason: "Confidence giảm đột ngột", penalty: 24, isTradeEligible: false });
-    const keyboard = buildMomentumCriticalInlineKeyboard({ exchange: "OKX", symbol: "ETHUSDT", interval: "4h" });
-    expect(message).toContain("page=confidence-timeline&exchange=OKX&symbol=ETHUSDT&interval=4h");
-    expect(keyboard.inline_keyboard[0][0].url).toContain("page=confidence-timeline&exchange=OKX&symbol=ETHUSDT&interval=4h");
+    const keyboard = buildMomentumCriticalInlineKeyboard({ exchange: "OKX", symbol: "ETHUSDT", interval: "4h", targetCandleClosedAt: 1_700_000_000_000 });
+    expect(message).toContain("page=confidence-timeline&exchange=OKX&symbol=ETHUSDT&interval=4h&target=1700000000000");
+    expect(keyboard.inline_keyboard[0][0].url).toContain("page=confidence-timeline&exchange=OKX&symbol=ETHUSDT&interval=4h&target=1700000000000");
     expect(keyboard.inline_keyboard[0][0].url).not.toContain("token");
   });
 
