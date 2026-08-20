@@ -584,5 +584,5 @@
 ## User request: GitHub sync for extended 1h news tests
 
 - [x] Kiểm tra thay đổi checkpoint, remote và tệp nhạy cảm trước khi push
-- [ ] Commit và push unit test mở rộng trên nhánh main
-- [ ] Xác minh commit mới nhất trên GitHub
+- [x] Commit và push unit test mở rộng trên nhánh main
+- [x] Xác minh commit mới nhất trên GitHub
