@@ -475,5 +475,5 @@
 
 ## User request: GitHub sync
 
-- [ ] Kiểm tra trạng thái repository và đồng bộ Confidence Timeline lên nhánh main
+- [x] Kiểm tra trạng thái repository và đồng bộ Confidence Timeline lên nhánh main
 - [ ] Xác minh commit GitHub sau khi push
