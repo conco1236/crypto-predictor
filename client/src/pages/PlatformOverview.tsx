@@ -1,4 +1,4 @@
-import { Activity, ArrowRight, BellRing, Bot, ChartNoAxesCombined, ClipboardCheck, Clock3, Gauge, LineChart, Radio, ShieldCheck, WalletCards } from "lucide-react";
+import { Activity, ArrowRight, BellRing, Bot, ChartNoAxesCombined, ClipboardCheck, Clock3, Gauge, LayoutDashboard, LineChart, Radio, ShieldCheck, WalletCards } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +11,7 @@ const modules = [
   { title: "P&L & Operations", description: "Theo dõi Heartbeat, báo cáo sandbox P&L, equity curve, filter, CSV/PNG/PDF và lịch sử vận hành.", href: "/?page=operations", action: "Mở Operations", icon: ChartNoAxesCombined, tone: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
   { title: "Feed Diagnostics", description: "Phân biệt WebSocket live, REST snapshot fallback, freshness BTC/ETH và latency kỹ thuật theo sàn.", href: "/?page=diagnostics", action: "Mở Diagnostics", icon: Radio, tone: "text-violet-400 bg-violet-500/10 border-violet-500/20" },
   { title: "Quality Alerts", description: "Tùy chỉnh ngưỡng quality penalty để Telegram cảnh báo khi confidence bị giảm mạnh do dữ liệu hoặc thanh khoản.", href: "/?page=quality-alerts", action: "Cấu hình cảnh báo", icon: BellRing, tone: "text-rose-400 bg-rose-500/10 border-rose-500/20" },
+  { title: "Command Center", description: "Scorecard vận hành cho feed, Telegram delivery, Heartbeat, quality posture và sandbox P&L.", href: "/?page=command-center", action: "Mở Command Center", icon: LayoutDashboard, tone: "text-sky-400 bg-sky-500/10 border-sky-500/20" },
 ];
 
 function RecentDryRunPanel() {

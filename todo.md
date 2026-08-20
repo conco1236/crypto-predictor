@@ -453,3 +453,10 @@
 - [x] Thêm quality threshold override riêng cho Binance, Bybit và OKX
 - [x] Áp dụng precedence threshold theo sàn trong manual persist/Heartbeat
 - [x] Kiểm thử schema, ownership, resolution, preview transformation, responsive UI và checkpoint
+
+## User request: professional version upgrade
+
+- [x] Thêm operations scorecard: feed health, alert delivery, Heartbeat và quality posture
+- [x] Thêm alert delivery drill-down với retry status, tuổi bản ghi và lý do quality/no-trade
+- [x] Thêm reporting snapshot executive cho P&L, confidence quality và trạng thái vận hành
+- [x] Kiểm thử data contracts, responsive UI, regression và phát hành release candidate
