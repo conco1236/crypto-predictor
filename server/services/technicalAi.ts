@@ -4,6 +4,7 @@ import { invokeLLM, listLLMModels, type InvokeParams, type InvokeResult } from "
 const AUTO_PREFERENCES = ["gpt-5-nano", "gpt-5-mini", "claude-haiku-4-5", "gemini-3-flash-preview"];
 const MODEL_ID = /^[a-zA-Z0-9._:-]{1,160}$/;
 const CACHE_MS = 5 * 60_000;
+const MANUAL_CONNECTION_TIMEOUT_MS = 8_000;
 let modelCache: { expiresAt: number; ids: string[] } | undefined;
 
 export type AvailableTechnicalModel = { id: string; source: "workspace"; autoEligible: boolean };
@@ -33,6 +34,28 @@ function manualCompletionUrl(baseUrl: string) {
   return /\/chat\/completions$/.test(url) ? url : `${url.replace(/\/$/, "")}/v1/chat/completions`;
 }
 
+export function createManualConnectionPayload(model: string) {
+  if (!MODEL_ID.test(model)) throw new Error("Model Manual API không hợp lệ");
+  return { model, messages: [{ role: "system", content: "Connection health check. Reply with OK only." }, { role: "user", content: "OK" }], max_tokens: 8 };
+}
+
+export async function probeManualOpenAiCompatible(baseUrl: string, apiKey: string, model: string, fetchImpl: typeof fetch = fetch) {
+  const startedAt = Date.now();
+  try {
+    const response = await fetchImpl(manualCompletionUrl(baseUrl), { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` }, body: JSON.stringify(createManualConnectionPayload(model)), signal: AbortSignal.timeout(MANUAL_CONNECTION_TIMEOUT_MS) });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json().catch(() => null) as { model?: unknown; choices?: unknown } | null;
+    if (!payload || !Array.isArray(payload.choices)) throw new Error("INVALID_RESPONSE");
+    return { ok: true as const, model: typeof payload.model === "string" ? payload.model : model, latencyMs: Date.now() - startedAt };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "TimeoutError") throw new Error("Manual AI API không phản hồi trong 8 giây");
+    const message = error instanceof Error ? error.message : "UNKNOWN";
+    if (/^HTTP \d{3}$/.test(message)) throw new Error(`Manual AI API ${message}`);
+    if (message === "INVALID_RESPONSE") throw new Error("Manual AI API trả về phản hồi không tương thích");
+    throw new Error("Không thể kết nối Manual AI API");
+  }
+}
+
 async function invokeManualOpenAiCompatible(baseUrl: string, apiKey: string, params: InvokeParams, model: string): Promise<InvokeResult> {
   const response = await fetch(manualCompletionUrl(baseUrl), { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ model, messages: params.messages, max_tokens: params.maxTokens ?? params.max_tokens ?? 700 }) });
   if (!response.ok) throw new Error(`Manual AI API trả về HTTP ${response.status}`);
@@ -54,4 +77,12 @@ export async function invokeTechnicalAi(userId: number, params: InvokeParams) {
   const model = mode === "workspace_model" && ids.includes(settings.model) ? settings.model : selectAutomaticTechnicalModel(ids);
   if (!model) throw new Error("Không có model AI workspace khả dụng");
   return invokeLLM({ ...params, model });
+}
+
+export async function testManualTechnicalAiConnection(userId: number) {
+  const settings = await getTechnicalAiSettings(userId);
+  if (settings.mode !== "manual_api" || !settings.apiBaseUrl) throw new Error("Chỉ kiểm tra được khi Manual API đã được lưu và bật");
+  const apiKey = await getTechnicalAiSecret(userId);
+  if (!apiKey) throw new Error("Cần lưu API key trước khi kiểm tra kết nối");
+  return probeManualOpenAiCompatible(settings.apiBaseUrl, apiKey, settings.model);
 }

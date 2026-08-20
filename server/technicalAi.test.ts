@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decryptTechnicalAiKey, encryptTechnicalAiKey } from "./db";
-import { selectAutomaticTechnicalModel, validateManualApiBaseUrl } from "./services/technicalAi";
+import { createManualConnectionPayload, probeManualOpenAiCompatible, selectAutomaticTechnicalModel, validateManualApiBaseUrl } from "./services/technicalAi";
 
 describe("technical AI model routing", () => {
   it("selects the preferred available workspace model for automatic mode", () => {
@@ -19,5 +19,17 @@ describe("technical AI model routing", () => {
     expect(encrypted).toMatch(/^v1:/);
     expect(encrypted).not.toContain(original);
     expect(decryptTechnicalAiKey(encrypted)).toBe(original);
+  });
+  it("probes a compatible endpoint with a minimal request and does not surface secret values", async () => {
+    const response = await probeManualOpenAiCompatible("https://api.example.com", "super-secret-token", "example-model", async (url, init) => {
+      expect(String(url)).toBe("https://api.example.com/v1/chat/completions");
+      expect(init?.headers).toMatchObject({ authorization: "Bearer super-secret-token" });
+      expect(JSON.parse(String(init?.body))).toEqual(createManualConnectionPayload("example-model"));
+      return new Response(JSON.stringify({ model: "example-model", choices: [{ message: { content: "OK" } }] }), { status: 200 });
+    });
+    expect(response).toMatchObject({ ok: true, model: "example-model" });
+  });
+  it("returns a sanitized connection error instead of an upstream response body", async () => {
+    await expect(probeManualOpenAiCompatible("https://api.example.com", "secret", "example-model", async () => new Response("secret leaked upstream", { status: 401 }))).rejects.toThrow("Manual AI API HTTP 401");
   });
 });

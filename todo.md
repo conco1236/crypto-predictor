@@ -535,3 +535,9 @@
 - [x] Tạo allowlist từ catalog model live và auto-select chỉ giữa model khả dụng
 - [x] Áp dụng model/API selection vào phân tích kỹ thuật và AI analysis theo nến
 - [x] Hoàn thiện giao diện unified Telegram + AI, kiểm thử secret/model routing và phát hành checkpoint
+
+## User request: Manual API connection test
+
+- [x] Thêm kiểm tra Manual API server-side với timeout và lỗi đã làm sạch secret
+- [x] Thêm nút test connection cùng trạng thái phản hồi trên AI settings
+- [x] Kiểm thử success/failure, secret redaction, responsive và phát hành checkpoint

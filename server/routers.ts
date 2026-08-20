@@ -16,7 +16,7 @@ import { buildSignalInlineKeyboard, formatSignalAlert, generateSignalAiAnalysis,
 import { resolveAlertRule } from "./services/alertRules";
 import { isPaperBotPaused } from "./services/telegramWebhook";
 import { getMockCredentialStatus, validateDryRunOrder, type MockExchange } from "./services/mockCex";
-import { getAvailableTechnicalModels, invokeTechnicalAi, validateManualApiBaseUrl } from "./services/technicalAi";
+import { getAvailableTechnicalModels, invokeTechnicalAi, testManualTechnicalAiConnection, validateManualApiBaseUrl } from "./services/technicalAi";
 
 function responseText(response: InvokeResult) {
   const content = response.choices?.[0]?.message?.content;
@@ -191,6 +191,7 @@ export const appRouter = router({
       }
       return saveTechnicalAiSettings(ctx.user.id, { mode: input.mode, model: input.model, apiBaseUrl: input.mode === "manual_api" ? input.apiBaseUrl : null, apiKey: input.apiKey });
     }),
+    testTechnicalAiConnection: protectedProcedure.mutation(async ({ ctx }) => testManualTechnicalAiConnection(ctx.user.id)),
     aiHistoryPage: protectedProcedure.input(z.object({ page: z.number().int().min(1).default(1), pageSize: z.number().int().min(5).max(50).default(20), symbol: z.string().max(20).optional(), interval: z.enum(["15m", "1h", "4h", "1d"]).optional() }).optional()).query(({ ctx, input }) => getAiHistoryPage(ctx.user.id, input?.page ?? 1, input?.pageSize ?? 20, { symbol: input?.symbol, interval: input?.interval })),
   }),
   telegram: router({
