@@ -484,3 +484,10 @@
 - [x] Thêm risk momentum classification từ chuỗi confidence/quality snapshot, không thay đổi guardrail Trade/No Trade
 - [x] Mở rộng Command Center với bảng early-warning action queue và decision context
 - [x] Kiểm thử regression, responsive và phát hành checkpoint
+
+## User request: configurable momentum thresholds
+
+- [x] Thêm cấu hình ngưỡng momentum theo tài khoản và migration/database helper an toàn
+- [x] Áp dụng ngưỡng cấu hình vào early-warning queue và Confidence Timeline
+- [x] Tạo bảng điều khiển chỉnh ngưỡng, preview tác động và lưu có ownership
+- [x] Kiểm thử schema, ownership, regression, responsive và phát hành checkpoint

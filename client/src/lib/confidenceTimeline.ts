@@ -5,10 +5,10 @@ export type ConfidenceTimelineAlertPoint = ReturnType<typeof annotateConfidenceM
 export const ABRUPT_CONFIDENCE_DROP_POINTS = sharedDropThreshold;
 export const annotateConfidenceDrops = annotateConfidenceMomentum;
 
-export function summarizeConfidenceTimeline(points: ConfidenceTimelinePoint[]) {
+export function summarizeConfidenceTimeline(points: ConfidenceTimelinePoint[], abruptThreshold = ABRUPT_CONFIDENCE_DROP_POINTS) {
   if (!points.length) return { observations: 0, average: null, min: null, max: null, gated: 0, abruptDrops: 0 };
   const values = points.map(point => point.confidence);
-  return { observations: points.length, average: values.reduce((sum, value) => sum + value, 0) / values.length, min: Math.min(...values), max: Math.max(...values), gated: points.filter(point => point.isTradeEligible === false).length, abruptDrops: annotateConfidenceDrops(points).filter(point => point.isAbruptDrop).length };
+  return { observations: points.length, average: values.reduce((sum, value) => sum + value, 0) / values.length, min: Math.min(...values), max: Math.max(...values), gated: points.filter(point => point.isTradeEligible === false).length, abruptDrops: annotateConfidenceDrops(points, abruptThreshold).filter(point => point.isAbruptDrop).length };
 }
 
 export function formatConfidencePoint(point: ConfidenceTimelineAlertPoint) {

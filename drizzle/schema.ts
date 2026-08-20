@@ -60,6 +60,15 @@ export const telegramQualityThresholdHistory = mysqlTable("telegram_quality_thre
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => ({ userHistoryIndex: index("telegram_quality_threshold_history_user_idx").on(table.userId, table.createdAt) }));
 
+export const momentumSettings = mysqlTable("momentum_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  criticalDropThreshold: int("criticalDropThreshold").default(15).notNull(),
+  deterioratingDropThreshold: int("deterioratingDropThreshold").default(8).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => ({ userUnique: uniqueIndex("momentum_settings_user_unique").on(table.userId) }));
+
 export const signalProcessingState = mysqlTable("signal_processing_state", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -219,6 +228,7 @@ export type TelegramSetting = typeof telegramSettings.$inferSelect;
 export type TelegramAlertRule = typeof telegramAlertRules.$inferSelect;
 export type TelegramQualityThresholdOverride = typeof telegramQualityThresholdOverrides.$inferSelect;
 export type TelegramQualityThresholdHistory = typeof telegramQualityThresholdHistory.$inferSelect;
+export type MomentumSetting = typeof momentumSettings.$inferSelect;
 export type SignalSnapshot = typeof signalSnapshots.$inferSelect;
 export type TelegramDeliveryLog = typeof telegramDeliveryLogs.$inferSelect;
 export type HeartbeatRun = typeof heartbeatRuns.$inferSelect;

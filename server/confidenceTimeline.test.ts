@@ -26,6 +26,11 @@ describe("confidence timeline contracts", () => {
     const stable = classifyConfidenceMomentum([{ candleClosedAt: 1, confidence: 70, penalty: 0, isTradeEligible: true, label: "Bullish" }, { candleClosedAt: 2, confidence: 67, penalty: 2, isTradeEligible: true, label: "Bullish" }]);
     expect(stable.status).toBe("stable");
   });
+  it("uses user-provided momentum thresholds consistently for critical and deteriorating states", () => {
+    const points = [{ candleClosedAt: 1, confidence: 80, penalty: 0, isTradeEligible: true as const, label: "Bullish" as const }, { candleClosedAt: 2, confidence: 68, penalty: 2, isTradeEligible: true as const, label: "Bullish" as const }];
+    expect(classifyConfidenceMomentum(points, { criticalDropThreshold: 10, deterioratingDropThreshold: 5 }).status).toBe("critical");
+    expect(classifyConfidenceMomentum(points, { criticalDropThreshold: 20, deterioratingDropThreshold: 10 }).status).toBe("deteriorating");
+  });
   it("queries the protected confidence history with asset, exchange, timeframe and user scope", async () => {
     const mocked = vi.spyOn(db, "getConfidenceHistory").mockResolvedValue([]);
     const caller = appRouter.createCaller({ req: {} as any, res: {} as any, user: { id: 9, openId: "timeline-user", name: "Timeline", email: null, loginMethod: null, role: "user", createdAt, updatedAt: createdAt, lastSignedIn: createdAt } });
@@ -38,6 +43,13 @@ describe("confidence timeline contracts", () => {
     const caller = appRouter.createCaller({ req: {} as any, res: {} as any, user: { id: 9, openId: "timeline-user", name: "Timeline", email: null, loginMethod: null, role: "user", createdAt, updatedAt: createdAt, lastSignedIn: createdAt } });
     await expect(caller.market.confidenceEarlyWarnings({ limit: 8 })).resolves.toEqual([]);
     expect(mocked).toHaveBeenCalledWith(9, 8);
+    mocked.mockRestore();
+  });
+  it("saves momentum thresholds only through the protected user-scoped mutation", async () => {
+    const mocked = vi.spyOn(db, "saveMomentumSettings").mockResolvedValue({ userId: 9, criticalDropThreshold: 16, deterioratingDropThreshold: 7 } as any);
+    const caller = appRouter.createCaller({ req: {} as any, res: {} as any, user: { id: 9, openId: "timeline-user", name: "Timeline", email: null, loginMethod: null, role: "user", createdAt, updatedAt: createdAt, lastSignedIn: createdAt } });
+    await expect(caller.market.saveMomentumSettings({ criticalDropThreshold: 16, deterioratingDropThreshold: 7 })).resolves.toMatchObject({ userId: 9 });
+    expect(mocked).toHaveBeenCalledWith(9, { criticalDropThreshold: 16, deterioratingDropThreshold: 7 });
     mocked.mockRestore();
   });
 });
