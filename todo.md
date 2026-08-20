@@ -513,5 +513,5 @@
 
 ## User request: GitHub sync after Critical candle focus
 
-- [ ] Đồng bộ deep link và focus nến Critical lên GitHub main
+- [x] Đồng bộ deep link và focus nến Critical lên GitHub main
 - [ ] Xác minh commit GitHub remote khớp workspace
