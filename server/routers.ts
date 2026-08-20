@@ -17,6 +17,7 @@ import { resolveAlertRule } from "./services/alertRules";
 import { isPaperBotPaused } from "./services/telegramWebhook";
 import { getMockCredentialStatus, validateDryRunOrder, type MockExchange } from "./services/mockCex";
 import { getAvailableTechnicalModels, invokeTechnicalAi, testManualTechnicalAiConnection, validateManualApiBaseUrl } from "./services/technicalAi";
+import { processTechnicalAiQuotaAlert } from "./services/technicalAiQuotaAlerts";
 
 function responseText(response: InvokeResult) {
   const content = response.choices?.[0]?.message?.content;
@@ -178,7 +179,7 @@ export const appRouter = router({
     historyPage: protectedProcedure.input(z.object({ page: z.number().int().min(1).default(1), pageSize: z.number().int().min(5).max(50).default(20), symbol: z.string().max(20).optional() }).optional()).query(({ ctx, input }) => getNewsHistoryPage(ctx.user.id, input?.page ?? 1, input?.pageSize ?? 20, input?.symbol)),
     aiHistory: protectedProcedure.input(z.object({ limit: z.number().int().min(1).max(200).default(50), symbol: z.string().max(20).optional(), interval: z.enum(["15m", "1h", "4h", "1d"]).optional() }).optional()).query(({ ctx, input }) => getAiHistory(ctx.user.id, input?.limit ?? 50, { symbol: input?.symbol, interval: input?.interval })),
     technicalAiSettings: protectedProcedure.query(async ({ ctx }) => ({ settings: await getTechnicalAiSettings(ctx.user.id), models: await getAvailableTechnicalModels() })),
-    saveTechnicalAiSettings: protectedProcedure.input(z.object({ mode: z.enum(["workspace_auto", "workspace_model", "manual_api"]), model: z.string().min(1).max(160), apiBaseUrl: z.string().max(500).optional(), apiKey: z.string().min(8).max(2000).optional() })).mutation(async ({ ctx, input }) => {
+    saveTechnicalAiSettings: protectedProcedure.input(z.object({ mode: z.enum(["workspace_auto", "workspace_model", "manual_api"]), model: z.string().min(1).max(160), apiBaseUrl: z.string().max(500).optional(), apiKey: z.string().min(8).max(2000).optional(), quotaAlertEnabled: z.boolean().optional(), quotaAlertThresholdPercent: z.number().int().min(1).max(50).optional() })).mutation(async ({ ctx, input }) => {
       const models = await getAvailableTechnicalModels();
       const isWorkspaceModel = models.some(model => model.id === input.model);
       if (input.mode === "workspace_model" && !isWorkspaceModel) throw new Error("Model không còn trong catalog workspace hiện hành");
@@ -189,9 +190,13 @@ export const appRouter = router({
         validateManualApiBaseUrl(input.apiBaseUrl);
         if (!input.apiKey && !current.hasApiKey) throw new Error("Cần nhập API key cho Manual API lần đầu");
       }
-      return saveTechnicalAiSettings(ctx.user.id, { mode: input.mode, model: input.model, apiBaseUrl: input.mode === "manual_api" ? input.apiBaseUrl : null, apiKey: input.apiKey });
+      return saveTechnicalAiSettings(ctx.user.id, { mode: input.mode, model: input.model, apiBaseUrl: input.mode === "manual_api" ? input.apiBaseUrl : null, apiKey: input.apiKey, quotaAlertEnabled: input.quotaAlertEnabled === undefined ? undefined : input.quotaAlertEnabled ? 1 : 0, quotaAlertThresholdPercent: input.quotaAlertThresholdPercent });
     }),
-    testTechnicalAiConnection: protectedProcedure.mutation(async ({ ctx }) => testManualTechnicalAiConnection(ctx.user.id)),
+    testTechnicalAiConnection: protectedProcedure.mutation(async ({ ctx }) => {
+      const result = await testManualTechnicalAiConnection(ctx.user.id);
+      const quotaAlert = await processTechnicalAiQuotaAlert(ctx.user.id, result.quota);
+      return { ...result, quotaAlert };
+    }),
     aiHistoryPage: protectedProcedure.input(z.object({ page: z.number().int().min(1).default(1), pageSize: z.number().int().min(5).max(50).default(20), symbol: z.string().max(20).optional(), interval: z.enum(["15m", "1h", "4h", "1d"]).optional() }).optional()).query(({ ctx, input }) => getAiHistoryPage(ctx.user.id, input?.page ?? 1, input?.pageSize ?? 20, { symbol: input?.symbol, interval: input?.interval })),
   }),
   telegram: router({

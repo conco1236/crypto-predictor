@@ -7,6 +7,7 @@ import {
   getLastSignal,
   getMomentumCriticalAlert,
   getMomentumSettings,
+  getTechnicalAiSettings,
   getProcessedCandle,
   getSignalOutcomes,
   getTelegramDeliveryLog,
@@ -21,6 +22,7 @@ import {
   saveSignalSnapshot,
   updateMomentumCriticalAlert,
   updateTelegramDeliveryLog,
+  updateTechnicalAiQuotaAlertState,
   getTelegramSettingsByPaperReportTaskUid,
   getClosedPaperTradesForDate,
   updatePaperReportSettings,
@@ -33,6 +35,8 @@ import { buildMomentumCriticalInlineKeyboard, buildSignalInlineKeyboard, formatM
 import { resolveAlertRule } from "./alertRules";
 import { resolveQualityThreshold } from "./qualityThresholds";
 import { detectCriticalMomentumTransition } from "../../shared/confidenceMomentum";
+import { testManualTechnicalAiConnection } from "./technicalAi";
+import { processTechnicalAiQuotaAlert } from "./technicalAiQuotaAlerts";
 
 function utcDateKey(offsetDays = 0) {
   const date = new Date(Date.now() + offsetDays * 86_400_000);
@@ -85,6 +89,7 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
   let saved = 0;
   let alerts = 0;
   let criticalAlerts = 0;
+  let quotaAlerts = 0;
   let skipped = 0;
   try {
     const user = await sdk.authenticateRequest(req);
@@ -96,9 +101,21 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
     const rules = await getTelegramAlertRules(userId);
     const qualityOverrides = await getQualityThresholdOverrides(userId);
     const momentumSettings = await getMomentumSettings(userId);
+    const technicalAiSettings = await getTechnicalAiSettings(userId);
     const newsSettings = await getNewsAiSettings(userId);
     const persistedOutcomes = await getSignalOutcomes(userId, 200);
     const analyses = await analyzeAllMarkets();
+
+    const lastQuotaCheck = technicalAiSettings.quotaCheckLastAt ? new Date(technicalAiSettings.quotaCheckLastAt).getTime() : 0;
+    if (technicalAiSettings.mode === "manual_api" && Date.now() - lastQuotaCheck >= 60 * 60_000) {
+      try {
+        const quotaProbe = await testManualTechnicalAiConnection(userId);
+        const quotaResult = await processTechnicalAiQuotaAlert(userId, quotaProbe.quota);
+        if (quotaResult.sent) { alerts++; quotaAlerts++; }
+      } catch {
+        await updateTechnicalAiQuotaAlertState(userId, { state: "unavailable", deliveryStatus: "pending", checkedAt: new Date() });
+      }
+    }
 
     for (const a of analyses) {
       const key = { exchange: a.exchange, symbol: a.symbol, interval: a.interval, candleOpenTime: a.candleOpenTime };
@@ -175,7 +192,7 @@ export async function refreshSignalsHandler(req: Request, res: Response) {
 
     const durationMs = Date.now() - startedMs;
     await saveHeartbeatRun({ userId, taskUid, status: "success", savedCount: saved, alertCount: alerts, skippedCount: skipped, durationMs, startedAt, finishedAt: new Date() });
-    return res.json({ ok: true, saved, alerts, criticalAlerts, skipped, durationMs });
+    return res.json({ ok: true, saved, alerts, criticalAlerts, quotaAlerts, skipped, durationMs });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (userId && taskUid) {

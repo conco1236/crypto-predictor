@@ -370,7 +370,7 @@ export async function saveNewsAiSettings(userId: number, input: { rssSources: st
 }
 
 export type TechnicalAiMode = "workspace_auto" | "workspace_model" | "manual_api";
-export const DEFAULT_TECHNICAL_AI_SETTINGS = { mode: "workspace_auto" as const, model: "gpt-5-nano", apiBaseUrl: null, hasApiKey: false, apiKeyMasked: null };
+export const DEFAULT_TECHNICAL_AI_SETTINGS = { mode: "workspace_auto" as const, model: "gpt-5-nano", apiBaseUrl: null, hasApiKey: false, apiKeyMasked: null, quotaAlertEnabled: 1, quotaAlertThresholdPercent: 10, quotaAlertState: "unavailable" as const, quotaAlertKind: null, quotaAlertDeliveryStatus: "pending" as const, quotaCheckLastAt: null, quotaAlertLastAt: null, quotaAlertLastPercent: null };
 
 function encryptionKey() {
   if (!ENV.cookieSecret) throw new Error("Server secret chưa sẵn sàng để bảo vệ AI API key");
@@ -408,13 +408,22 @@ export async function getTechnicalAiSecret(userId: number) {
   return result[0]?.apiKeyCiphertext ? decryptTechnicalAiKey(result[0].apiKeyCiphertext) : undefined;
 }
 
-export async function saveTechnicalAiSettings(userId: number, input: { mode: TechnicalAiMode; model: string; apiBaseUrl?: string | null; apiKey?: string | null }) {
+export async function saveTechnicalAiSettings(userId: number, input: { mode: TechnicalAiMode; model: string; apiBaseUrl?: string | null; apiKey?: string | null; quotaAlertEnabled?: number; quotaAlertThresholdPercent?: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database chưa sẵn sàng");
   const current = await db.select().from(technicalAiSettings).where(eq(technicalAiSettings.userId, userId)).limit(1);
   const apiKeyCiphertext = input.apiKey === undefined ? current[0]?.apiKeyCiphertext ?? null : input.apiKey ? encryptTechnicalAiKey(input.apiKey) : null;
-  const values = { userId, mode: input.mode, model: input.model, apiBaseUrl: input.apiBaseUrl ?? null, apiKeyCiphertext };
-  await db.insert(technicalAiSettings).values(values).onDuplicateKeyUpdate({ set: { mode: values.mode, model: values.model, apiBaseUrl: values.apiBaseUrl, apiKeyCiphertext: values.apiKeyCiphertext, updatedAt: new Date() } });
+  const quotaAlertEnabled = input.quotaAlertEnabled ?? current[0]?.quotaAlertEnabled ?? 1;
+  const quotaAlertThresholdPercent = input.quotaAlertThresholdPercent ?? current[0]?.quotaAlertThresholdPercent ?? 10;
+  const values = { userId, mode: input.mode, model: input.model, apiBaseUrl: input.apiBaseUrl ?? null, apiKeyCiphertext, quotaAlertEnabled, quotaAlertThresholdPercent };
+  await db.insert(technicalAiSettings).values(values).onDuplicateKeyUpdate({ set: { mode: values.mode, model: values.model, apiBaseUrl: values.apiBaseUrl, apiKeyCiphertext: values.apiKeyCiphertext, quotaAlertEnabled: values.quotaAlertEnabled, quotaAlertThresholdPercent: values.quotaAlertThresholdPercent, updatedAt: new Date() } });
+  return getTechnicalAiSettings(userId);
+}
+
+export async function updateTechnicalAiQuotaAlertState(userId: number, data: { state: "normal" | "low" | "unavailable"; kind?: string | null; deliveryStatus?: "pending" | "sent" | "failed"; percent?: number | null; checkedAt?: Date; alertedAt?: Date | null }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database chưa sẵn sàng");
+  await db.update(technicalAiSettings).set({ quotaAlertState: data.state, quotaAlertKind: data.kind ?? null, quotaAlertDeliveryStatus: data.deliveryStatus ?? "pending", quotaAlertLastPercent: data.percent == null ? null : Math.round(data.percent), quotaCheckLastAt: data.checkedAt ?? new Date(), ...(data.alertedAt !== undefined ? { quotaAlertLastAt: data.alertedAt } : {}), updatedAt: new Date() }).where(eq(technicalAiSettings.userId, userId));
   return getTechnicalAiSettings(userId);
 }
 

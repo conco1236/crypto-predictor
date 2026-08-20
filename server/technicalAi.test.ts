@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { decryptTechnicalAiKey, encryptTechnicalAiKey } from "./db";
 import { createManualConnectionPayload, probeManualOpenAiCompatible, readManualApiQuotaHeaders, selectAutomaticTechnicalModel, validateManualApiBaseUrl } from "./services/technicalAi";
+import { evaluateLowQuota, formatTechnicalAiQuotaAlert } from "./services/technicalAiQuotaAlerts";
 
 describe("technical AI model routing", () => {
   it("selects the preferred available workspace model for automatic mode", () => {
@@ -36,5 +37,11 @@ describe("technical AI model routing", () => {
     expect(readManualApiQuotaHeaders(new Headers({ "x-quota-remaining": "42", "x-quota-limit": "100", "x-quota-unit": "credits" }))).toEqual({ status: "quota", remaining: 42, limit: 100, unit: "credits", source: "provider quota header" });
     expect(readManualApiQuotaHeaders(new Headers({ "x-ratelimit-remaining-requests": "8", "x-ratelimit-limit-requests": "10" }))).toMatchObject({ status: "rate_limit", remaining: 8, limit: 10, unit: "requests" });
     expect(readManualApiQuotaHeaders(new Headers())).toEqual({ status: "unavailable" });
+  });
+  it("alerts only when provider supplies both remaining and limit below the configured percent", () => {
+    expect(evaluateLowQuota({ status: "quota", remaining: 5, limit: 100, unit: "credits" }, 10)).toMatchObject({ state: "low", percent: 5, kind: "quota" });
+    expect(evaluateLowQuota({ status: "rate_limit", remaining: 80, limit: 100, unit: "requests" }, 10)).toMatchObject({ state: "normal", percent: 80 });
+    expect(evaluateLowQuota({ status: "quota", remaining: 5 }, 10)).toMatchObject({ state: "unavailable" });
+    expect(formatTechnicalAiQuotaAlert({ kind: "quota", remaining: 5, limit: 100, percent: 5, unit: "credits" })).toContain("AI API quota thấp");
   });
 });

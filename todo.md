@@ -547,3 +547,10 @@
 - [x] Xác định metadata quota tiêu chuẩn có thể đọc từ response/header Manual API
 - [x] Thêm server-side quota probe với fallback không khả dụng, không suy diễn usage
 - [x] Hiển thị quota capability trên AI settings và kiểm thử parsing, redaction, responsive, phát hành checkpoint
+
+## User request: Telegram alert for low Manual API quota
+
+- [x] Rà soát quota metadata, Telegram settings và idempotency cho low-quota alert
+- [x] Thêm threshold cấu hình, audit state và phát hiện quota/rate-limit thấp chỉ khi provider công bố
+- [x] Gửi Telegram alert không trùng, hiển thị audit/status trong AI settings
+- [x] Kiểm thử conditions, idempotency, Telegram safety, responsive và phát hành checkpoint

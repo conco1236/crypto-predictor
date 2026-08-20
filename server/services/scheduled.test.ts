@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { paperPnlReportHandler, refreshSignalsHandler } from "./scheduled";
 
-const { authenticateRequest, getSettings, getPaperReportSettings, getClosedTrades, updatePaperReport, createAudit, getRules, getQualityOverrides, getLast, getProcessed, getDelivery, getSignalOutcomes, getMomentumSettings, getConfidenceHistory, getCriticalAlert, createCriticalAlert, updateCriticalAlert, createDelivery, updateDelivery, markProcessed, saveSnapshot, saveHeartbeat, analyze, send } = vi.hoisted(() => ({
-  authenticateRequest: vi.fn(), getSettings: vi.fn(), getPaperReportSettings: vi.fn(), getClosedTrades: vi.fn(), updatePaperReport: vi.fn(), createAudit: vi.fn(), getRules: vi.fn(), getQualityOverrides: vi.fn(), getLast: vi.fn(), getProcessed: vi.fn(), getDelivery: vi.fn(), getSignalOutcomes: vi.fn(), getMomentumSettings: vi.fn(), getConfidenceHistory: vi.fn(), getCriticalAlert: vi.fn(), createCriticalAlert: vi.fn(), updateCriticalAlert: vi.fn(), createDelivery: vi.fn(), updateDelivery: vi.fn(), markProcessed: vi.fn(), saveSnapshot: vi.fn(), saveHeartbeat: vi.fn(), analyze: vi.fn(), send: vi.fn(),
+const { authenticateRequest, getSettings, getPaperReportSettings, getClosedTrades, updatePaperReport, createAudit, getRules, getQualityOverrides, getLast, getProcessed, getDelivery, getSignalOutcomes, getMomentumSettings, getTechnicalSettings, updateQuotaState, getConfidenceHistory, getCriticalAlert, createCriticalAlert, updateCriticalAlert, createDelivery, updateDelivery, markProcessed, saveSnapshot, saveHeartbeat, analyze, send, testManual, processQuota } = vi.hoisted(() => ({
+  authenticateRequest: vi.fn(), getSettings: vi.fn(), getPaperReportSettings: vi.fn(), getClosedTrades: vi.fn(), updatePaperReport: vi.fn(), createAudit: vi.fn(), getRules: vi.fn(), getQualityOverrides: vi.fn(), getLast: vi.fn(), getProcessed: vi.fn(), getDelivery: vi.fn(), getSignalOutcomes: vi.fn(), getMomentumSettings: vi.fn(), getTechnicalSettings: vi.fn(), updateQuotaState: vi.fn(), getConfidenceHistory: vi.fn(), getCriticalAlert: vi.fn(), createCriticalAlert: vi.fn(), updateCriticalAlert: vi.fn(), createDelivery: vi.fn(), updateDelivery: vi.fn(), markProcessed: vi.fn(), saveSnapshot: vi.fn(), saveHeartbeat: vi.fn(), analyze: vi.fn(), send: vi.fn(), testManual: vi.fn(), processQuota: vi.fn(),
 }));
 
 vi.mock("../_core/sdk", () => ({ sdk: { authenticateRequest } }));
-vi.mock("../db", () => ({ getTelegramSettingsByTaskUid: getSettings, getTelegramSettingsByPaperReportTaskUid: getPaperReportSettings, getClosedPaperTradesForDate: getClosedTrades, updatePaperReportSettings: updatePaperReport, createPaperBotAudit: createAudit, getTelegramAlertRules: getRules, getQualityThresholdOverrides: getQualityOverrides, getLastSignal: getLast, getProcessedCandle: getProcessed, getTelegramDeliveryLog: getDelivery, getSignalOutcomes, getMomentumSettings, getConfidenceHistory, getMomentumCriticalAlert: getCriticalAlert, createMomentumCriticalAlert: createCriticalAlert, updateMomentumCriticalAlert: updateCriticalAlert, getNewsAiSettings: vi.fn(async () => undefined), saveAiAnalysis: vi.fn(), saveNewsItem: vi.fn(), createTelegramDeliveryLog: createDelivery, updateTelegramDeliveryLog: updateDelivery, markProcessedCandle: markProcessed, saveSignalSnapshot: saveSnapshot, saveHeartbeatRun: saveHeartbeat }));
+vi.mock("../db", () => ({ getTelegramSettingsByTaskUid: getSettings, getTelegramSettingsByPaperReportTaskUid: getPaperReportSettings, getClosedPaperTradesForDate: getClosedTrades, updatePaperReportSettings: updatePaperReport, createPaperBotAudit: createAudit, getTelegramAlertRules: getRules, getQualityThresholdOverrides: getQualityOverrides, getLastSignal: getLast, getProcessedCandle: getProcessed, getTelegramDeliveryLog: getDelivery, getSignalOutcomes, getMomentumSettings, getTechnicalAiSettings: getTechnicalSettings, updateTechnicalAiQuotaAlertState: updateQuotaState, getConfidenceHistory, getMomentumCriticalAlert: getCriticalAlert, createMomentumCriticalAlert: createCriticalAlert, updateMomentumCriticalAlert: updateCriticalAlert, getNewsAiSettings: vi.fn(async () => undefined), saveAiAnalysis: vi.fn(), saveNewsItem: vi.fn(), createTelegramDeliveryLog: createDelivery, updateTelegramDeliveryLog: updateDelivery, markProcessedCandle: markProcessed, saveSignalSnapshot: saveSnapshot, saveHeartbeatRun: saveHeartbeat }));
 vi.mock("../market/binance", () => ({ analyzeAllMarkets: analyze }));
 vi.mock("../market/news", () => ({ fetchRelevantNews: vi.fn(async () => []) }));
 vi.mock("./telegram", () => ({ formatSignalAlert: vi.fn(() => "alert"), formatMomentumCriticalAlert: vi.fn(() => "critical alert"), generateSignalAiAnalysis: vi.fn(async () => "AI test analysis"), buildSignalInlineKeyboard: vi.fn(() => ({ inline_keyboard: [] })), buildMomentumCriticalInlineKeyboard: vi.fn(() => ({ inline_keyboard: [] })), sendTelegramMessage: send }));
+vi.mock("./technicalAi", () => ({ testManualTechnicalAiConnection: testManual }));
+vi.mock("./technicalAiQuotaAlerts", () => ({ processTechnicalAiQuotaAlert: processQuota }));
 
 function response() {
   return { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() } as any;
@@ -52,7 +54,7 @@ describe("paperPnlReportHandler", () => {
 });
 
 describe("refreshSignalsHandler", () => {
-  beforeEach(() => { vi.clearAllMocks(); getRules.mockResolvedValue([]); getQualityOverrides.mockResolvedValue([]); getSignalOutcomes.mockResolvedValue([]); getMomentumSettings.mockResolvedValue({ criticalDropThreshold: 15, deterioratingDropThreshold: 8 }); getConfidenceHistory.mockResolvedValue([]); getCriticalAlert.mockResolvedValue(undefined); createCriticalAlert.mockResolvedValue({ id: 2, status: "pending", attempts: 0, message: "critical alert" }); analyze.mockResolvedValue([market]); getDelivery.mockResolvedValue(undefined); createDelivery.mockResolvedValue({ id: 1, status: "pending", attempts: 0 }); saveSnapshot.mockResolvedValue(undefined); updateDelivery.mockResolvedValue(undefined); updateCriticalAlert.mockResolvedValue(undefined); saveHeartbeat.mockResolvedValue(undefined); send.mockResolvedValue({ ok: true, result: { message_id: 1 } }); });
+  beforeEach(() => { vi.clearAllMocks(); getRules.mockResolvedValue([]); getQualityOverrides.mockResolvedValue([]); getSignalOutcomes.mockResolvedValue([]); getMomentumSettings.mockResolvedValue({ criticalDropThreshold: 15, deterioratingDropThreshold: 8 }); getTechnicalSettings.mockResolvedValue({ mode: "workspace_auto", quotaCheckLastAt: null }); updateQuotaState.mockResolvedValue(undefined); testManual.mockResolvedValue({ quota: { status: "unavailable" } }); processQuota.mockResolvedValue({ sent: false }); getConfidenceHistory.mockResolvedValue([]); getCriticalAlert.mockResolvedValue(undefined); createCriticalAlert.mockResolvedValue({ id: 2, status: "pending", attempts: 0, message: "critical alert" }); analyze.mockResolvedValue([market]); getDelivery.mockResolvedValue(undefined); createDelivery.mockResolvedValue({ id: 1, status: "pending", attempts: 0 }); saveSnapshot.mockResolvedValue(undefined); updateDelivery.mockResolvedValue(undefined); updateCriticalAlert.mockResolvedValue(undefined); saveHeartbeat.mockResolvedValue(undefined); send.mockResolvedValue({ ok: true, result: { message_id: 1 } }); });
 
   it("rejects non-cron callers", async () => {
     authenticateRequest.mockResolvedValue({ isCron: false });
@@ -68,6 +70,19 @@ describe("refreshSignalsHandler", () => {
     const res = response();
     await refreshSignalsHandler({} as any, res);
     expect(res.json).toHaveBeenCalledWith({ ok: true, skipped: "orphan" });
+  });
+
+  it("probes a Manual API quota on Heartbeat and counts a newly sent low-quota alert", async () => {
+    authenticateRequest.mockResolvedValue({ isCron: true, taskUid: "task-1" });
+    getSettings.mockResolvedValue({ userId: 7, enabled: 1, alertThreshold: 50, botToken: "token", chatId: "chat" });
+    getTechnicalSettings.mockResolvedValue({ mode: "manual_api", quotaCheckLastAt: null });
+    testManual.mockResolvedValue({ quota: { status: "quota", remaining: 5, limit: 100 } });
+    processQuota.mockResolvedValue({ sent: true, state: "low", percent: 5 });
+    const res = response();
+    await refreshSignalsHandler({} as any, res);
+    expect(testManual).toHaveBeenCalledWith(7);
+    expect(processQuota).toHaveBeenCalledWith(7, { status: "quota", remaining: 5, limit: 100 });
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ quotaAlerts: 1 }));
   });
 
   it("skips an already processed closed candle", async () => {

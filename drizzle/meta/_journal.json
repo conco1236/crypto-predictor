@@ -120,6 +120,13 @@
       "when": 1787202472752,
       "tag": "0016_wooden_whistler",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1787203500540,
+      "tag": "0017_closed_spitfire",
+      "breakpoints": true
     }
   ]
 }
