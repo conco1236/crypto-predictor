@@ -510,3 +510,8 @@
 - [x] Thêm target candle timestamp vào Critical Telegram deep link theo allowlist an toàn
 - [x] Tự cuộn và làm nổi bật marker/bảng decision context của nến Critical trên Confidence Timeline
 - [x] Kiểm thử deep link target, accessibility, responsive và phát hành checkpoint
+
+## User request: GitHub sync after Critical candle focus
+
+- [ ] Đồng bộ deep link và focus nến Critical lên GitHub main
+- [ ] Xác minh commit GitHub remote khớp workspace
