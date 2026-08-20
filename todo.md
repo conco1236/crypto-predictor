@@ -572,5 +572,5 @@
 ## User request: GitHub synchronization
 
 - [x] Kiểm tra trạng thái repository, remote và loại trừ secrets/runtime files
-- [ ] Commit các thay đổi callback Telegram mới nhất trên nhánh main
-- [ ] Push và xác minh commit trên GitHub
+- [x] Commit các thay đổi callback Telegram mới nhất trên nhánh main
+- [x] Push và xác minh commit trên GitHub
