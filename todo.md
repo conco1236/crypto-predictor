@@ -1,0 +1,26 @@
+# Project TODO
+
+- [x] Define the normalized BTC/USDT and ETH/USDT candle, indicator, signal, risk, and freshness contracts.
+- [x] Add database tables for signal snapshots, signal history, refresh configuration, and delivery audit records.
+- [x] Implement Binance public-market data retrieval for 1m, 15m, 1h, 4h, and 1d intervals.
+- [x] Implement EMA 9/21/50/200, RSI 14, MACD, Bollinger Bands, ADX, ATR, volume analysis, and support/resistance calculations.
+- [x] Implement the multi-timeframe trend engine with exactly Bullish, Bearish, Neutral, and No Trade statuses.
+- [x] Derive entry zone, take-profit, and stop-loss levels from ATR, support/resistance, and trend alignment.
+- [x] Calculate Low, Medium, and High risk scores from ADX, RSI extremes, volume confirmation, and multi-timeframe agreement.
+- [x] Enforce closed-candle-only processing, expected-candle-close freshness evaluation, and stale-feed warning behavior.
+- [x] Build a dark Telegram Mini App dashboard with compact signal cards and timeframe tabs ordered 1m, 15m, 1h, 4h, 1d.
+- [x] Add signal history and refresh-health views with clear empty, loading, and error states.
+- [ ] Add authenticated Heartbeat refresh endpoint and project-level one-minute job configuration after deployment.
+- [ ] Add secure Telegram webhook handler and exact /btc and /eth signal replies after bot credentials are configured.
+- [x] Add idempotent signal-history and Telegram-delivery audit logging.
+- [x] Add Vitest coverage for indicators, risk, freshness, idempotency, protected scheduled work, and Telegram command parsing.
+- [x] Add explicit tests for closed-candle history and Telegram delivery idempotency plus cron-only endpoint authentication.
+- [x] Add direct indicator-output and cron authorization cases to the Vitest suite.
+- [x] Add handler-level cron-only and orphan/disabled tests plus direct controlled risk-score assertions.
+- [x] Prevent undefined refresh-health responses from breaking the dashboard query cache.
+- [x] Derive the Telegram webhook URL automatically from the deployed HTTPS request domain instead of requesting PUBLIC_APP_URL.
+- [ ] Run type checks and tests, inspect logs, and verify desktop and mobile dashboard layouts.
+- [ ] Save a verified project checkpoint and provide deployment and Telegram setup instructions.
+- [ ] Audit the exported project for GitHub synchronization and Vercel compatibility requirements.
+- [ ] Add a Vercel deployment guide describing required external database, authentication, cron, and secret configuration.
+- [ ] Push the sanitized project source to the selected GitHub repository without secrets or runtime data.

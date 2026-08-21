@@ -1,0 +1,5 @@
+# Verification Notes
+
+The dashboard root rendered successfully in the live preview. The DOM contained the full `SignalDashboard` structure, including the Orbital Signal Desk header, asset selector, technical signal content, and a rendered root height of approximately 1461 pixels. The first visual capture showed only the dark background despite the populated DOM, so visual validation will continue using refreshed captures and browser log checks before delivery.
+
+After correcting the refresh-health query to return `null` rather than `undefined`, a new browser session confirmed the dashboard header and complete live technical content in the DOM. The live read included BTC/USDT and ETH/USDT prices, all five required timeframes, current signal state, risk, indicators, freshness, and levels. The capture renderer continued to omit text and panels despite computed styles and browser text confirming they are visible; this is recorded as a capture-rendering discrepancy rather than a dashboard runtime failure.
