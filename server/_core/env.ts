@@ -9,4 +9,7 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
   telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET ?? "",
+  deploymentTarget: process.env.DEPLOY_TARGET ?? "managed",
+  cronSecret: process.env.CRON_SECRET ?? "",
+  adminSetupToken: process.env.ADMIN_SETUP_TOKEN ?? "",
 };

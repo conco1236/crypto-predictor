@@ -2,21 +2,25 @@
 
 ## Current export status
 
-This repository is ready to be synchronized to GitHub as a **source export**. It is **not safe to deploy unchanged to Vercel** because the current application uses platform-managed OAuth, Heartbeat authentication, storage helpers, database wiring, and server bootstrap code. Vercel can host Express as a single Vercel Function when the app is exported correctly, but it does not execute this managed bootstrap unchanged. [Vercel Express documentation](https://vercel.com/docs/frameworks/backend/express)
+This repository now contains a Vercel-compatible runtime entry. The Vite application is built by `pnpm build:vercel`; the Express API is exported from `api/[...path].ts`; and `server/vercel-app.ts` registers only the public dashboard APIs, Telegram webhook, protected webhook-registration route, and Vercel Cron endpoint. Vercel hosts Express as a Vercel Function when the application is exported correctly. [Vercel Express documentation](https://vercel.com/docs/frameworks/backend/express)
 
-| Current capability | Vercel-compatible replacement required |
+| Requirement | Implemented Vercel boundary |
 | --- | --- |
-| `server/_core/index.ts` starts an HTTP listener and serves Vite itself | Export an Express app or separate the frontend build from a Vercel Function entry. Do not retain the managed listener bootstrap. |
-| Manus OAuth and `server/_core/sdk.ts` | Replace with an external authentication provider or a custom signed-session implementation. |
-| Heartbeat POST endpoint and six-field cron | Add a Vercel Cron-compatible `GET` endpoint, protect it with a `CRON_SECRET`, and define a five-field UTC schedule in `vercel.json`. Vercel Cron calls the production deployment by HTTP GET. [Vercel Cron documentation](https://vercel.com/docs/cron-jobs) |
-| Managed MySQL and storage environment | Provision an external MySQL-compatible database and object storage, then supply their credentials in Vercel Environment Variables. |
-| Built-in platform variables and notifications | Replace each integration with an external equivalent or remove it from the exported product. |
+| Managed listener and Vite middleware | Replaced by an exported Express application in `server/vercel-app.ts` and static Vite output in `dist/public`. |
+| Manus OAuth | The Vercel dashboard is intentionally public; `server/vercel-context.ts` provides an anonymous tRPC context and no managed OAuth route is registered. |
+| Heartbeat POST and six-field cron | Replaced by `GET /api/cron/market-refresh`, guarded by `CRON_SECRET`, and a five-field UTC schedule in `vercel.json`. [Vercel Cron documentation](https://vercel.com/docs/cron-jobs) |
+| Telegram webhook registration | `POST /api/admin/register-telegram` is protected by `ADMIN_SETUP_TOKEN` and derives the callback URL from the verified HTTPS request host. |
+| MySQL persistence | Retained through `DATABASE_URL`; provision a MySQL-compatible hosted database before deployment. |
 
-## Target configuration after migration
+## Required Vercel environment variables
 
-The migrated Vercel project should use a standard Express function entry and independent Vite static build. Server-only secrets belong in Vercel Environment Variables, never in source control. At minimum, use `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, and `CRON_SECRET`; add the new authentication provider’s variables separately. Do **not** copy any `BUILT_IN_*`, `JWT_SECRET`, `OAUTH_SERVER_URL`, or owner variables from the current managed environment.
+Copy `.env.vercel.example` into **Project Settings → Environment Variables**, add real values there, and do not commit them. The deployment uses `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `CRON_SECRET`, `ADMIN_SETUP_TOKEN`, `DEPLOY_TARGET=vercel`, and `VITE_DEPLOY_TARGET=vercel`.
 
-For the market refresh, Vercel Cron uses five cron fields and UTC. A conceptual configuration is shown below only after the application exposes a compatible `GET` endpoint:
+`CRON_SECRET` must be a random server-only value of at least 16 characters. Vercel includes it as an `Authorization: Bearer ...` header when invoking the Cron route. [Vercel Cron security documentation](https://vercel.com/docs/cron-jobs/manage-cron-jobs)
+
+## Cron configuration
+
+The project already includes the following Vercel Cron schedule. It uses five fields and UTC:
 
 ```json
 {
@@ -29,10 +33,19 @@ For the market refresh, Vercel Cron uses five cron fields and UTC. A conceptual 
 }
 ```
 
-The Telegram webhook can continue to derive its callback domain from the verified incoming HTTPS host after the exported Express handler is running on Vercel. The bot token and webhook secret must be configured in Vercel, and the webhook must be registered only after the production deployment is live.
+## Telegram activation after the production deployment
+
+After the Vercel production URL is live, call the protected setup route once from a terminal. Replace the placeholders locally; never place them in source control:
+
+```bash
+curl -X POST "https://YOUR-PRODUCTION-DOMAIN/api/admin/register-telegram" \
+  -H "Authorization: Bearer YOUR_ADMIN_SETUP_TOKEN"
+```
+
+The route registers the webhook using the incoming HTTPS host and then the bot accepts the exact `/btc` and `/eth` commands. The webhook secret remains server-only.
 
 ## Recommended delivery sequence
 
-First, import the GitHub branch into a new Vercel project as a preview environment, not production. Then complete the migration items in the table above, add the Vercel environment variables, run database migrations against the external database, and validate the webhook and cron endpoint independently. Only after those checks should the Vercel project be promoted to production.
+Import the GitHub branch into a new Vercel project. Configure the environment variables, create the external MySQL database, run the Drizzle migrations against that database, and create a preview deployment first. Validate `/api/health`, the public dashboard, and the Cron route with the `CRON_SECRET` before promoting to production. Finally, run the Telegram activation command above.
 
-> The current managed hosting path remains the lower-risk way to run this exact code today, because its database, OAuth, Heartbeat, and Telegram workflow are already wired together.
+> The Vercel export intentionally does not replicate managed OAuth. If private dashboard access is required later, add an external identity provider rather than reusing platform-managed OAuth.

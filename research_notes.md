@@ -22,3 +22,7 @@
 | Vercel deployments create an HTTPS deployment URL and expose system URL variables. | Telegram webhook registration can use the production host or Vercel system URL in the exported implementation, but it must not rely on Manus-specific cron identities. |
 
 Sources: https://vercel.com/docs/frameworks/backend/express and https://vercel.com/docs/cron-jobs
+
+### Vercel Cron Authentication
+
+Vercel documents that a `CRON_SECRET` environment variable is sent automatically in the `Authorization` header with the `Bearer` prefix for cron invocations. The migrated GET endpoint will require exactly this value using timing-safe comparison, and will return `401` for requests that do not match. Source: https://vercel.com/docs/cron-jobs/manage-cron-jobs

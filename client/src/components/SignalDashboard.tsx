@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
+import { IS_VERCEL_BUILD } from "@/lib/deployment";
 import {
   coinName,
   formatIndicator,
@@ -227,6 +228,7 @@ export default function SignalDashboard() {
   const minuteRefresh = trpc.automation.enableMinuteRefresh.useMutation();
   const webhookSetup = trpc.telegram.configureWebhook.useMutation();
   const { user, loading: authLoading } = useAuth();
+  const isVercelRuntime = IS_VERCEL_BUILD;
   const signals = useMemo(() => (signalQuery.data?.signals ?? []) as SignalSnapshot[], [signalQuery.data]);
   const selectedSignals = signals.filter(signal => signal.symbol === symbol);
   const selected = selectedSignals.find(signal => signal.timeframe === timeframe);
@@ -299,18 +301,18 @@ export default function SignalDashboard() {
               <article className="operation-card">
                 <div className="operation-icon"><Zap className="h-4 w-4" /></div>
                 <div className="operation-copy"><span>Market engine</span><strong>{healthQuery.data?.scheduleCronTaskUid ? "One-minute refresh active" : "Ready for one-minute refresh"}</strong><small>Processes closed candles only and persists an idempotent signal history.</small></div>
-                {user?.role === "admin" ? <button type="button" className="control-button" disabled={Boolean(healthQuery.data?.scheduleCronTaskUid) || minuteRefresh.isPending} onClick={() => void enableMinuteRefresh()}>{minuteRefresh.isPending ? "Scheduling…" : healthQuery.data?.scheduleCronTaskUid ? "Active" : "Enable"}</button> : <button type="button" className="control-button" disabled={authLoading} onClick={() => startLogin()}>{authLoading ? "Loading…" : "Admin sign in"}</button>}
+                {isVercelRuntime ? <span className="control-state">Vercel Cron</span> : user?.role === "admin" ? <button type="button" className="control-button" disabled={Boolean(healthQuery.data?.scheduleCronTaskUid) || minuteRefresh.isPending} onClick={() => void enableMinuteRefresh()}>{minuteRefresh.isPending ? "Scheduling…" : healthQuery.data?.scheduleCronTaskUid ? "Active" : "Enable"}</button> : <button type="button" className="control-button" disabled={authLoading} onClick={() => startLogin()}>{authLoading ? "Loading…" : "Admin sign in"}</button>}
               </article>
               <article className="operation-card">
                 <div className="operation-icon telegram-icon"><Bot className="h-4 w-4" /></div>
                 <div className="operation-copy"><span>Telegram bot</span><strong>{telegramStatus.data?.configured ? "Bot credentials configured" : "Awaiting secure bot credentials"}</strong><small>Handles exact <b>/btc</b> and <b>/eth</b> commands through an authenticated webhook.</small></div>
-                {user?.role === "admin" ? <button type="button" className="control-button" disabled={!telegramStatus.data?.configured || telegramStatus.data?.deploymentRequired || webhookSetup.isPending} onClick={() => void activateWebhook()}>{webhookSetup.isPending ? "Connecting…" : telegramStatus.data?.deploymentRequired ? "Publish first" : telegramStatus.data?.configured ? "Activate" : "Configure"}</button> : <span className="control-state">{telegramStatus.data?.configured ? "Ready" : "Pending"}</span>}
+                {isVercelRuntime ? <span className="control-state">{telegramStatus.data?.configured ? "Setup route ready" : "Add env vars"}</span> : user?.role === "admin" ? <button type="button" className="control-button" disabled={!telegramStatus.data?.configured || telegramStatus.data?.deploymentRequired || webhookSetup.isPending} onClick={() => void activateWebhook()}>{webhookSetup.isPending ? "Connecting…" : telegramStatus.data?.deploymentRequired ? "Publish first" : telegramStatus.data?.configured ? "Activate" : "Configure"}</button> : <span className="control-state">{telegramStatus.data?.configured ? "Ready" : "Pending"}</span>}
               </article>
             </section>
             <section className="monitor-grid" aria-label="Signal history and refresh health">
               <article className="monitor-card">
                 <div className="monitor-heading"><div><span>Refresh health</span><strong>Data engine status</strong></div><Activity className="h-4 w-4" /></div>
-                {healthQuery.isLoading ? <p className="monitor-empty">Checking refresh health…</p> : healthQuery.error ? <p className="monitor-empty is-error">Refresh health is currently unavailable.</p> : healthQuery.data ? <div className="health-lines"><p><span>Last run</span><b>{healthQuery.data.lastRunAt ? new Date(healthQuery.data.lastRunAt).toLocaleString() : "Not scheduled"}</b></p><p><span>Last successful</span><b>{healthQuery.data.lastSuccessAt ? new Date(healthQuery.data.lastSuccessAt).toLocaleString() : "No successful run"}</b></p><p><span>Updated signals</span><b>{healthQuery.data.refreshedSignals}</b></p>{healthQuery.data.lastError ? <p className="health-error">{healthQuery.data.lastError}</p> : null}</div> : <p className="monitor-empty">Heartbeat will report status after its first published run.</p>}
+                {healthQuery.isLoading ? <p className="monitor-empty">Checking refresh health…</p> : healthQuery.error ? <p className="monitor-empty is-error">Refresh health is currently unavailable.</p> : healthQuery.data ? <div className="health-lines"><p><span>Last run</span><b>{healthQuery.data.lastRunAt ? new Date(healthQuery.data.lastRunAt).toLocaleString() : "Not scheduled"}</b></p><p><span>Last successful</span><b>{healthQuery.data.lastSuccessAt ? new Date(healthQuery.data.lastSuccessAt).toLocaleString() : "No successful run"}</b></p><p><span>Updated signals</span><b>{healthQuery.data.refreshedSignals}</b></p>{healthQuery.data.lastError ? <p className="health-error">{healthQuery.data.lastError}</p> : null}</div> : <p className="monitor-empty">{isVercelRuntime ? "Vercel Cron will report status after its first production run." : "Heartbeat will report status after its first published run."}</p>}
               </article>
               <article className="monitor-card">
                 <div className="monitor-heading"><div><span>Closed-candle history</span><strong>{coinName(symbol)} · {timeframe}</strong></div><Clock3 className="h-4 w-4" /></div>

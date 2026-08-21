@@ -21,6 +21,13 @@
 - [x] Derive the Telegram webhook URL automatically from the deployed HTTPS request domain instead of requesting PUBLIC_APP_URL.
 - [ ] Run type checks and tests, inspect logs, and verify desktop and mobile dashboard layouts.
 - [ ] Save a verified project checkpoint and provide deployment and Telegram setup instructions.
-- [ ] Audit the exported project for GitHub synchronization and Vercel compatibility requirements.
-- [ ] Add a Vercel deployment guide describing required external database, authentication, cron, and secret configuration.
-- [ ] Push the sanitized project source to the selected GitHub repository without secrets or runtime data.
+- [x] Audit the exported project for GitHub synchronization and Vercel compatibility requirements.
+- [x] Add a Vercel deployment guide describing required external database, authentication, cron, and secret configuration.
+- [x] Push the sanitized project source to the selected GitHub repository without secrets or runtime data.
+- [x] Replace the managed server bootstrap with a Vercel-compatible Express function entry and static frontend build.
+- [x] Replace Heartbeat task identity with Vercel Cron GET authentication and a UTC five-field one-minute schedule.
+- [x] Replace managed OAuth dependencies with an explicit external-auth compatibility boundary for Vercel.
+- [x] Replace or isolate platform-only storage, notification, and data API dependencies from the exported runtime.
+- [x] Add Vercel deployment configuration, external environment variable template, and migration instructions.
+- [ ] Test the Vercel-compatible build locally and synchronize the migrated branch to GitHub.
+- [x] Remove managed OAuth/session behavior from the Vercel frontend path and verify it runs without preview auth assumptions.
