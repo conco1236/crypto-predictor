@@ -32,3 +32,4 @@
 - [x] Test the Vercel-compatible build locally and synchronize the migrated branch to GitHub.
 - [x] Remove managed OAuth/session behavior from the Vercel frontend path and verify it runs without preview auth assumptions.
 - [ ] Verify visible Vercel dashboard layout on desktop and mobile, including tabs, monitoring cards, and automation cards.
+- [x] Exercise the exported Vercel Express app locally through its public health route.
