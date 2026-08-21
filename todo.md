@@ -29,5 +29,6 @@
 - [x] Replace managed OAuth dependencies with an explicit external-auth compatibility boundary for Vercel.
 - [x] Replace or isolate platform-only storage, notification, and data API dependencies from the exported runtime.
 - [x] Add Vercel deployment configuration, external environment variable template, and migration instructions.
-- [ ] Test the Vercel-compatible build locally and synchronize the migrated branch to GitHub.
+- [x] Test the Vercel-compatible build locally and synchronize the migrated branch to GitHub.
 - [x] Remove managed OAuth/session behavior from the Vercel frontend path and verify it runs without preview auth assumptions.
+- [ ] Verify visible Vercel dashboard layout on desktop and mobile, including tabs, monitoring cards, and automation cards.
